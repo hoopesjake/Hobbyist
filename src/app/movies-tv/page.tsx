@@ -1,0 +1,2 @@
+import { redirect } from "next/navigation";
+export default async function Legacy({searchParams}:{searchParams:Promise<{type?:string;q?:string;page?:string}>}){const params=await searchParams;const root=params.type==="tv"?"/tv":params.type==="person"?"/actors":"/movies";const query=new URLSearchParams();if(typeof params.q==="string")query.set("q",params.q.slice(0,200));if(typeof params.page==="string")query.set("page",params.page);redirect(query.size?`${root}/discover?${query}`:root);}

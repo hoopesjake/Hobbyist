@@ -1,0 +1,1 @@
+export default function Loading() { return <div className="catalog-loading" role="status"><p>Finding your next great story...</p><div className="catalog-grid" aria-hidden="true">{Array.from({ length: 6 }, (_, i) => <div className="catalog-skeleton" key={i} />)}</div></div>; }
