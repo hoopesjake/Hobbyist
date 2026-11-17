@@ -2,6 +2,7 @@ import "server-only";
 import { cacheLife } from "next/cache";
 import { createIgdbTransport, IgdbError } from "@/lib/igdb-transport";
 import { gameId, gameSearchBody } from "@/lib/game-validation";
+import { gameSearchFilters, rankGameSearch } from "@/lib/game-search";
 export { IgdbError };
 export type GameFacet = { id: number; name: string };
 export type GameSummary = { id: number; name: string; slug?: string; cover?: { image_id: string }; first_release_date?: number; genres?: GameFacet[]; platforms?: GameFacet[]; rating?: number; rating_count?: number; aggregated_rating?: number; aggregated_rating_count?: number };
@@ -16,8 +17,27 @@ export function gameRelease(timestamp?: number) { if (!timestamp || !Number.isFi
 export async function searchGames(query = "", page = 1, genre?: number | null, platform?: number | null) {
   "use cache";
   cacheLife({ stale: 60, revalidate: 900, expire: 86400 });
-  const data = await transport.request<GameSummary>("games", `fields ${cardFields}; ${gameSearchBody(query, page, genre, platform)}`);
-  return { games: data.slice(0, 20), hasNext: data.length > 20 };
+  const text = query.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 200);
+  const data = await getGameSearchCandidates(text, text ? 1 : page, genre, platform);
+  const ranked = text ? rankGameSearch(data, text) : data;
+  const offset = text ? (Math.max(1, Math.min(25, Math.floor(page) || 1)) - 1) * 20 : 0;
+  return { games: ranked.slice(offset, offset + 20), hasNext: ranked.length > offset + 20 };
+}
+async function getGameSearchCandidates(query: string, page: number, genre?: number | null, platform?: number | null) {
+  "use cache";
+  cacheLife({ stale: 60, revalidate: 900, expire: 86400 });
+  const metadata = await getGameSearchMetadata();
+  const filters = gameSearchFilters(metadata.types, metadata.statuses, Date.now());
+  return transport.request<GameSummary & { alternative_names?: { name: string }[] }>("games", `fields ${cardFields},alternative_names.name; ${gameSearchBody(query, page, genre, platform, filters)}`);
+}
+async function getGameSearchMetadata() {
+  "use cache";
+  cacheLife({ stale: 86400, revalidate: 86400, expire: 604800 });
+  const [types, statuses] = await Promise.all([
+    transport.request<{ id: number; type: string }>("game_types", "fields id,type; limit 100;"),
+    transport.request<{ id: number; status: string }>("game_statuses", "fields id,status; limit 100;"),
+  ]);
+  return { types, statuses };
 }
 export async function getGame(id: number) {
   "use cache";

@@ -27,7 +27,7 @@ export function createIgdbTransport(clientId: () => string | undefined, secret: 
     })();
     try { return await pendingToken; } finally { pendingToken = null; }
   }
-  async function request<T>(endpoint: "games" | "genres" | "platforms", body: string): Promise<T[]> {
+  async function request<T>(endpoint: "games" | "genres" | "platforms" | "game_types" | "game_statuses", body: string): Promise<T[]> {
     if (pending >= 64) throw new IgdbError("The game catalog is busy. Please try again shortly.", 429);
     pending++;
     const operation = tail.catch(() => undefined).then(async () => {

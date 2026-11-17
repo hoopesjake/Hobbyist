@@ -1,12 +1,13 @@
+import { withDiscoveryReturnTo } from "@/lib/discovery-navigation";
 import { RatingStars } from "@/components/movies/rating-stars";
 import { MediaImage } from "@/components/movies/media-image";
 import Link from "next/link";
 import { imageUrl, titleDate, titleName, type CatalogItem } from "@/lib/tmdb";
-export function CatalogCard({ item, genres = {}, note, rating }: { item: CatalogItem; genres?: Record<number, string>; note?: string; rating?: number | null }) {
+export function CatalogCard({ item, genres = {}, note, rating, returnTo }: { item: CatalogItem; genres?: Record<number, string>; note?: string; rating?: number | null; returnTo?: string }) {
   const person = item.media_type === "person";
   const title = titleName(item);
   const image = imageUrl(person ? item.profile_path : item.poster_path);
-  return <Link className="catalog-card" href={person ? `/actors/${item.id}` : `${item.media_type === "tv" ? "/tv" : "/movies"}/${item.id}`}>
+  return <Link className="catalog-card" href={withDiscoveryReturnTo(person ? `/actors/${item.id}` : `${item.media_type === "tv" ? "/tv" : "/movies"}/${item.id}`, person ? undefined : returnTo)}>
     <div className={`catalog-poster${person ? " actor-portrait" : ""}`}>{image ? <MediaImage src={image} alt={person ? title : `${title} poster`} width={342} height={513} sizes="(max-width: 600px) 45vw, (max-width: 1000px) 28vw, 180px" /> : <span className="poster-fallback">{person ? "Portrait unavailable" : "Poster unavailable"}</span>}</div>
     <p className="catalog-kind">{person ? item.known_for_department === "Directing" ? "Director" : item.known_for_department === "Acting" ? "Actor" : "Person" : item.media_type === "tv" ? "TV series" : "Movie"}{!person && titleDate(item) ? ` / ${titleDate(item).slice(0, 4)}` : ""}</p>
     <h3>{title}</h3>

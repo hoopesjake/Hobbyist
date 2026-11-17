@@ -40,11 +40,13 @@ export function parseGame(form: FormData, today = new Date().toISOString().slice
     started_on: started_on || null, completed_on: completed_on || null, last_played_on: last_played_on || null,
     wishlist: form.get("wishlist") === "on", to_be_played: form.get("to_be_played") === "on", want_to_play_more: form.get("want_to_play_more") === "on", favorite: form.get("favorite") === "on" } } as const;
 }
-export function gameSearchBody(query: string, page: number, genre?: number | null, platform?: number | null) {
+export function gameSearchBody(query: string, page: number, genre?: number | null, platform?: number | null, filters: string[] = []) {
   const text = query.replace(/[\u0000-\u001f\u007f]/g, " ").trim().slice(0, 200);
-  const where = ["version_parent = null"];
+  const where = ["version_parent = null", ...filters];
   if (genre) { if (!gameId(genre)) throw new Error("Invalid genre"); where.push(`genres = (${genre})`); }
   if (platform) { if (!gameId(platform)) throw new Error("Invalid platform"); where.push(`platforms = (${platform})`); }
   const safePage = Math.max(1, Math.min(500, Number.isFinite(page) ? Math.floor(page) : 1));
-  return `${text ? `search ${JSON.stringify(text)};` : "sort rating_count desc;"} where ${where.join(" & ")}; limit 21; offset ${(safePage - 1) * 20};`;
+  // Rank the same candidate pool before slicing pages, so results cannot shuffle
+  // between pages. IGDB's search already supplies its closest matches first.
+  return `${text ? `search ${JSON.stringify(text)};` : "sort rating_count desc;"} where ${where.join(" & ")}; limit ${text ? 500 : 21}; offset ${text ? 0 : (safePage - 1) * 20};`;
 }

@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import { CalendarPreview } from "@/components/calendar/calendar-preview";
 import Link from "next/link";
 import { requireUser,currentProfile } from "@/lib/auth";
 import { ProfileUnavailable } from "@/components/auth/profile-unavailable";
@@ -8,6 +10,7 @@ import { SectionHeading } from "@/components/ui/section-heading";
 export default async function Home(){
   await requireUser();const profile=await currentProfile();if(!profile)return <ProfileUnavailable/>;const name=profile.display_name;
   return <div className="dashboard page-content"><header className="welcome-row"><div><p className="eyebrow">YOUR PERSONAL SPACE</p><h1>Welcome back, {name}<span>.</span></h1><p className="welcome-copy">A little time for the things you love.</p></div><Link className="profile-chip" href="/profile"><span className="avatar avatar-you">{name.slice(0,1).toUpperCase()}</span><span>Your space</span></Link></header>
+    <Suspense fallback={<section className="dashboard-section" aria-label="Loading calendar"><p className="welcome-copy">Loading your calendar...</p></section>}><CalendarPreview/></Suspense>
     <section className="dashboard-section enjoying-section"><SectionHeading id="recent-movies" eyebrow="YOUR MOVIE DIARY" title="Recently watched movies" href="/movies/library?filter=watched" linkLabel="Watched movies"/><PersonalLibrary kind="movie" filter="watched" limit={5} preview/></section>
     <section className="dashboard-section"><SectionHeading id="watching-shows" eyebrow="PICKING UP WHERE YOU LEFT OFF" title="Currently watching TV shows" href="/tv/library?filter=watching" linkLabel="TV library"/><PersonalLibrary kind="tv" filter="watching" limit={5} preview/></section>
     <section className="dashboard-section"><SectionHeading id="playing-games" eyebrow="JUST ONE MORE QUEST" title="Currently Playing" href="/games/library?filter=playing" linkLabel="Game library"/><GameLibrary filter="playing" preview/></section><section className="dashboard-section"><SectionHeading id="completed-games" eyebrow="CREDITS ROLLED" title="Recently completed games" href="/games/library?filter=completed" linkLabel="Completed games"/><GameLibrary filter="completed" preview/></section><section className="dashboard-section"><SectionHeading id="shortcuts" eyebrow="YOUR PERSONAL SHORTCUTS" title="Quick access"/><QuickAccess/></section>

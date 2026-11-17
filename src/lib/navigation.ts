@@ -1,9 +1,10 @@
-import { BookOpen, ChartNoAxesColumn, Clapperboard, Gamepad2, Hammer, House, Layers3, Music2, UserRound, UsersRound, Tv, type LucideIcon } from "lucide-react";
+import { CalendarDays, BookOpen, ChartNoAxesColumn, Clapperboard, Gamepad2, Hammer, House, Layers3, Music2, UserRound, UsersRound, Tv, type LucideIcon } from "lucide-react";
 
 export interface NavigationItem { label: string; href: string; icon: LucideIcon; keywords: string[]; }
 
 export const navigationItems: NavigationItem[] = [
   { label: "Home", href: "/", icon: House, keywords: ["dashboard"] },
+  { label: "Calendar", href: "/calendar", icon: CalendarDays, keywords: ["schedule", "journal", "memories", "plan", "activity"] },
   { label: "Movies", href: "/movies", icon: Clapperboard, keywords: ["film", "watched", "watchlist"] },
   { label: "TV Shows", href: "/tv", icon: Tv, keywords: ["series", "episodes", "seasons"] },
   { label: "Actors", href: "/actors", icon: UsersRound, keywords: ["cast", "filmography", "followed"] },

@@ -1,3 +1,5 @@
+import { LibraryActivity } from "@/components/calendar/media-activity";
+import { getLibraryPlans } from "@/lib/media-activity";
 import Link from "next/link";
 import { getMovies,getShows } from "@/lib/tracking";
 import { getTitle,type CatalogItem } from "@/lib/tmdb";
@@ -13,6 +15,7 @@ export async function PersonalLibrary({kind,page=1,filter="all",limit=24,preview
     const note="status" in entry?showStatusLabels[entry.status as ShowStatus]:entry.watched?`Watched${entry.watched_on?` ${entry.watched_on}`:""}`:entry.on_watchlist?"On your watchlist":"In your library";
     return {item,note,rating:entry.rating};
   }));
+  const plans = await getLibraryPlans(kind, library.entries.map(e => e.tmdb_id));
   const pages=Math.max(1,Math.ceil(library.total/limit));const href=(next:number)=>`${root}/library?${new URLSearchParams({filter,page:String(next)})}`;
-  return <><div className="catalog-grid">{items.map(({item,note,rating})=><CatalogCard key={item.id} item={item} note={note} rating={rating}/>)}</div>{!preview&&pages>1&&<nav className="catalog-pagination" aria-label="Library pages">{page>1&&<Link href={href(page-1)}>Previous</Link>}<span>Page {page} of {pages}</span>{page<pages&&<Link href={href(page+1)}>Next</Link>}</nav>}</>;
+  return <><div className="catalog-grid">{items.map(({item,note,rating})=><div key={item.id} className="library-hobby-card"><CatalogCard item={item} note={note} rating={rating}/><LibraryActivity type={kind} id={item.id} plans={plans.filter(e => e.provider_id === item.id)}/></div>)}</div>{!preview&&pages>1&&<nav className="catalog-pagination" aria-label="Library pages">{page>1&&<Link href={href(page-1)}>Previous</Link>}<span>Page {page} of {pages}</span>{page<pages&&<Link href={href(page+1)}>Next</Link>}</nav>}</>;
 }

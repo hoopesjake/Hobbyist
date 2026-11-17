@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   /* config options here */
   cacheComponents: true,
   partialPrefetching: true,
-  images: { remotePatterns: [{ protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/**" }, { protocol: "https", hostname: "images.igdb.com", pathname: "/igdb/image/upload/**" }] },
+  images: { remotePatterns: [{ protocol: "https", hostname: "covers.openlibrary.org", pathname: "/b/id/**" }, { protocol: "https", hostname: "image.tmdb.org", pathname: "/t/p/**" }, { protocol: "https", hostname: "images.igdb.com", pathname: "/igdb/image/upload/**" }] },
   turbopack: {
     rules: {
       "*.css": {

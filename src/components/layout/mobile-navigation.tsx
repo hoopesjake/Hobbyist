@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Tv, Clapperboard, Gamepad2, House, MoreHorizontal } from "lucide-react";
+import { Tv, Clapperboard, Gamepad2, House, MoreHorizontal, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import { navigationItems } from "@/lib/navigation";
 
-const primaryItems = [{ label: "Home", href: "/", icon: House }, { label: "Movies", href: "/movies", icon: Clapperboard }, { label: "TV Shows", href: "/tv", icon: Tv }, { label: "Games", href: "/games", icon: Gamepad2 }];
+const primaryItems = [{ label: "Home", href: "/", icon: House }, { label: "Calendar", href: "/calendar", icon: CalendarDays }, { label: "Movies", href: "/movies", icon: Clapperboard }, { label: "TV Shows", href: "/tv", icon: Tv }, { label: "Games", href: "/games", icon: Gamepad2 }];
 
 export function MobileNavigation() {
   const pathname = usePathname();
