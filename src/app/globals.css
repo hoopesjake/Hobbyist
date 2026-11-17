@@ -1,4 +1,48 @@
 @import "tailwindcss";
+/* Shared rhythm for every media destination. */
+.media-page { --media-space: 24px; }
+.media-page .movies-header { margin-bottom: 32px; }
+.media-page .catalog-search { margin-bottom: var(--media-space); }
+.media-page > h2 { margin: 0 0 18px; }
+.media-page > .navigation-tabs, .media-page > .status-filters { margin-bottom: var(--media-space); }
+.media-page > .dashboard-section { margin-top: 32px; }
+.media-page .section-heading { margin-bottom: 20px; }
+
+/* Compact shelves keep all four libraries together, and accept future shelves. */
+.home-library-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 24px; }
+.home-library-shelf { min-width: 0; padding: 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.home-library-shelf > .section-heading { align-items: center; margin-bottom: 18px; }
+.home-library-shelf h3 { margin: 0; font: 24px Georgia,serif; }
+.home-library-shelf .catalog-grid { grid-template-columns: repeat(5,minmax(0,1fr)); gap: 16px 12px; }
+.home-library-shelf .catalog-card h3 { font: 12px/1.45 var(--font-body,Arial,sans-serif); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.home-library-shelf .catalog-note, .home-library-shelf .catalog-genres, .home-library-shelf .catalog-description { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.home-library-shelf .catalog-kind { font-size: 9px; letter-spacing: .2px; }
+.home-library-shelf .personal-rating-stars { gap: 1px; }
+.home-library-shelf .personal-rating-star { width: 12px; height: 12px; }
+.home-library-shelf .personal-rating-star svg { width: 12px; height: 12px; }
+.home-library-shelf .media-empty { margin: 0; padding: 24px 12px; }
+.home-library-shelf .poster-fallback { min-height: 0; padding: 6px; font-size: 10px; }
+.calendar-home-actions { flex-wrap: wrap; }
+.calendar-preview-grid .section-heading { margin: 0 0 12px; align-items: center; }
+.calendar-preview-grid .section-heading h3 { margin: 0; font: 22px Georgia,serif; color: var(--text); }
+.calendar-preview-grid .calendar-preview-item { display: flex; align-items: center; gap: 12px; }
+.home-event-cover { width: 40px; height: 58px; flex-shrink: 0; border-radius: 4px; overflow: hidden; }
+.home-event-cover img { width: 100%; height: 100%; object-fit: cover; }
+.home-event-copy { display: grid; gap: 5px; min-width: 0; }
+.home-event-copy > span, .home-event-copy > small { font-size: 11px; color: var(--muted); }
+.home-recent-memories { margin-top: 16px; font-size: 12px; color: var(--soft); }
+.home-recent-memories summary { cursor: pointer; width: fit-content; }
+.home-memory-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; margin-top: 14px; }
+.home-memory-grid a { display: grid; gap: 6px; min-width: 0; }
+.home-memory-grid span { color: var(--muted); font-size: 10px; }
+@media(max-width:1100px) { .home-library-grid { grid-template-columns: 1fr; } }
+@media(max-width:550px) {
+  .media-page { --media-space: 20px; }
+  .media-page .movies-header { margin-bottom: 24px; }
+  .home-library-shelf { padding: 16px; }
+  .home-library-shelf .catalog-grid { grid-template-columns: repeat(5,minmax(76px,1fr)); gap: 16px 10px; overflow-x: auto; padding-bottom: 8px; }
+  .home-memory-grid { grid-template-columns: 1fr; }
+}
 .book-reading-controls { width: min(100%, 850px); margin-inline: auto; }
 .book-tracking-form { width: 100%; max-width: 850px; margin-inline: auto; padding: 22px; border: 1px solid var(--line); border-radius: 8px; background: #191c17; }
 .book-tracking-form h3 { margin: 0 0 5px; font: 24px Georgia,serif; }

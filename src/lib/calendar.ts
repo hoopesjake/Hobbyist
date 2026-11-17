@@ -38,13 +38,16 @@ export const getCalendarEntries = cache(async (start: string, end: string) => {
 
 export const getCalendarPreview = cache(async (today: string) => {
   const user = await currentUser();
-  if (!user) return { plans: [] as CalendarEntry[], memories: [] as CalendarEntry[], error: null };
+  if (!user) return { todayEntries: [] as CalendarEntry[], plans: [] as CalendarEntry[], memories: [] as CalendarEntry[], error: null };
   const client = await createClient();
-  const [plans, memories] = await Promise.all([
+  const [todayEntries, plans, memories] = await Promise.all([
     client.from("calendar_entries").select("*").eq("user_id", user.id).eq("kind", "plan").in("status", ["planned", "changed"])
-      .gte("event_date", today).lt("event_date", addCalendarDays(today, 90)).order("event_date").order("start_time", { nullsFirst: false }).order("id").limit(6),
+      .lte("event_date", today).or(`end_date.gte.${today},and(end_date.is.null,event_date.eq.${today})`).order("event_date").order("start_time", { nullsFirst: false }).order("id").limit(6),
+    client.from("calendar_entries").select("*").eq("user_id", user.id).eq("kind", "plan").in("status", ["planned", "changed"])
+      .gt("event_date", today).lt("event_date", addCalendarDays(today, 90)).order("event_date").order("start_time", { nullsFirst: false }).order("id").limit(4),
     client.from("calendar_entries").select("*").eq("user_id", user.id).eq("kind", "actual").order("event_date", { ascending: false }).order("updated_at", { ascending: false }).limit(3),
   ]);
-  if (plans.error || memories.error) return { plans: [], memories: [], error: calendarUnavailable };
-  return { plans: await activityArtwork(plans.data as CalendarEntry[]), memories: await activityArtwork(memories.data as CalendarEntry[]), error: null };
+  if (todayEntries.error || plans.error || memories.error) return { todayEntries: [], plans: [], memories: [], error: calendarUnavailable };
+  const [todayArtwork,planArtwork,memoryArtwork]=await Promise.all([activityArtwork(todayEntries.data as CalendarEntry[]),activityArtwork(plans.data as CalendarEntry[]),activityArtwork(memories.data as CalendarEntry[])]);
+  return { todayEntries:todayArtwork, plans:planArtwork, memories:memoryArtwork, error:null };
 });
