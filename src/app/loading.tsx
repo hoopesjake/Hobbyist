@@ -1,1 +1,2 @@
-export default function Loading() { return <p className="page-content" role="status">Loading your space...</p>; }
+import { PageLoading } from "@/components/ui/page-loading";
+export default function Loading() { return <PageLoading/>; }

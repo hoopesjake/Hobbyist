@@ -1,0 +1,13 @@
+import Link from "next/link";
+import { currentUser } from "@/lib/auth";
+import { searchGames,getGameFacets,IgdbError } from "@/lib/igdb";
+import { gameId } from "@/lib/game-validation";
+import { GameCard } from "@/components/games/game-card";
+export type GameSearchParams={q?:string;page?:string;genre?:string;platform?:string};
+export async function GameDiscovery({params={},preview=false}:{params?:GameSearchParams;preview?:boolean}){
+ const q=typeof params.q==="string"?params.q.trim().slice(0,200):"",page=Math.min(500,Math.max(1,parseInt(params.page||"1",10)||1));
+ const genre=gameId(params.genre),platform=gameId(params.platform);const user=await currentUser();let results,facets;
+ try{[results,facets]=await Promise.all([searchGames(q,page,genre,platform),getGameFacets()]);}catch(error){return <section className="library-panel" role="status"><h2>Game catalog unavailable</h2><p>{error instanceof IgdbError?error.message:"Please try again shortly."}</p><Link className="text-link" href="/games/discover">Try again</Link></section>;}
+ const href=(next:number)=>`?${new URLSearchParams({q,page:String(next),...(genre?{genre:String(genre)}:{}),...(platform?{platform:String(platform)}:{})})}`;
+ return <><form className="catalog-search game-search" action="/games/discover" role="search"><label className="sr-only" htmlFor="game-search">Search games</label><input id="game-search" name="q" type="search" maxLength={200} defaultValue={q} placeholder="Search games…"/><label className="sr-only" htmlFor="game-genre">Genre</label><select id="game-genre" name="genre" defaultValue={genre||""}><option value="">All genres</option>{facets.genres.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select><label className="sr-only" htmlFor="game-platform">Platform</label><select id="game-platform" name="platform" defaultValue={platform||""}><option value="">All platforms</option>{facets.platforms.map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select><button className="account-button">Search</button></form><div className="section-heading"><h2>{q?`Results for “${q}”`:"Popular with players"}</h2>{preview?<Link className="text-link" href="/games/discover">Explore all</Link>:<Link className="text-link" href="/games/discover">Clear filters</Link>}</div>{results.games.length?<div className="catalog-grid">{results.games.slice(0,preview?5:20).map(game=><GameCard key={game.id} game={game} quick={!!user}/>)}</div>:<p className="media-empty">No games found</p>}{!preview&&<nav className="catalog-pagination" aria-label="Game search pages">{page>1&&<Link href={href(page-1)}>Previous</Link>}<span>Page {page}</span>{results.hasNext&&page<500&&<Link href={href(page+1)}>Next</Link>}</nav>}</>;
+}

@@ -8,8 +8,9 @@ export function CatalogCard({ item, genres = {}, note, rating }: { item: Catalog
   const image = imageUrl(person ? item.profile_path : item.poster_path);
   return <Link className="catalog-card" href={person ? `/actors/${item.id}` : `${item.media_type === "tv" ? "/tv" : "/movies"}/${item.id}`}>
     <div className={`catalog-poster${person ? " actor-portrait" : ""}`}>{image ? <MediaImage src={image} alt={person ? title : `${title} poster`} width={342} height={513} sizes="(max-width: 600px) 45vw, (max-width: 1000px) 28vw, 180px" /> : <span className="poster-fallback">{person ? "Portrait unavailable" : "Poster unavailable"}</span>}</div>
-    <p className="catalog-kind">{person ? "Person" : item.media_type === "tv" ? "TV series" : "Movie"}{!person && titleDate(item) ? ` / ${titleDate(item).slice(0, 4)}` : ""}</p>
+    <p className="catalog-kind">{person ? item.known_for_department === "Directing" ? "Director" : item.known_for_department === "Acting" ? "Actor" : "Person" : item.media_type === "tv" ? "TV series" : "Movie"}{!person && titleDate(item) ? ` / ${titleDate(item).slice(0, 4)}` : ""}</p>
     <h3>{title}</h3>
+    {person && !!item.known_for_titles?.length && <p className="catalog-note">{item.known_for_titles.join(" / ")}</p>}
     {!!item.genre_ids?.length && <p className="catalog-genres">{item.genre_ids.map(id => genres[id]).filter(Boolean).slice(0, 2).join(" / ")}</p>}
     {!person && <p className="catalog-score">TMDB {item.vote_count ? `${item.vote_average?.toFixed(1)} / 10` : "not rated"}</p>}
     {note && <p className="catalog-note">{note}</p>}

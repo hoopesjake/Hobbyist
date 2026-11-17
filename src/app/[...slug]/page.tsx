@@ -1,7 +1,7 @@
+import { BackLink } from "@/components/layout/back-link";
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { Sparkles } from "lucide-react";
 
 interface PlaceholderRoute {
   title: string;
@@ -42,7 +42,7 @@ export default async function PlaceholderPage({ params }: { params: Promise<Rout
 
   return (
     <div className="placeholder-page">
-      <Link className="back-link" href="/"><ArrowLeft size={15} aria-hidden="true" /> Back to home</Link>
+      <BackLink href="/">Back to home</BackLink>
       <p className="eyebrow">A PLACE FOR WHAT YOU LOVE</p>
       <h1>{route.title}</h1>
       <p>{route.description}</p>

@@ -9,6 +9,9 @@ import type { FormState } from "@/components/auth/action-form";
 function refresh(){revalidatePath("/","layout");}
 function failed(code:string):FormState{console.error("Separate tracking write failed:",code);return {error:"Your changes could not be saved. Please try again later."};}
 function caught(error:unknown):FormState{return {error:error instanceof TmdbError?error.message:"Your changes could not be saved. Please try again."};}
+async function markShowWatching(client:Awaited<ReturnType<typeof createClient>>,userId:string,showId:number){
+  return client.from("tv_tracking").update({status:"watching"}).eq("user_id",userId).eq("tmdb_id",showId).neq("status","completed");
+}
 export async function saveMovie(_:FormState,form:FormData):Promise<FormState>{
   const user=await currentUser();if(!user)return {error:"Sign in to save your movie."};
   const id=validId(form.get("tmdb_id"));if(!id)return {error:"Invalid movie."};
@@ -30,14 +33,14 @@ async function episodeContext(form:FormData){
   const metadata=await getEpisode(id,season,episode);
   if(metadata.season_number!==season || metadata.episode_number!==episode)return {error:"Episode details changed. Please refresh."} as const;
   const client=await createClient();
-  // Create a planned parent only if absent. Never overwrite overall status/dates/rating.
+  // Create the parent if absent; successful watched writes update its status below.
   const {error}=await client.from("tv_tracking").upsert({user_id:user.id,tmdb_id:id},{onConflict:"user_id,tmdb_id",ignoreDuplicates:true});
   if(error){console.error("Episode parent creation failed:",error.code);return {error:"Your show could not be saved. Please try again later."} as const;}
   return {client,identity:{user_id:user.id,tmdb_show_id:id,season_number:season,episode_number:episode,tmdb_episode_id:metadata.id}} as const;
 }
 export async function saveEpisode(_:FormState,form:FormData):Promise<FormState>{
   const parsed=parseTracking("episode",form);if(parsed.error)return {error:parsed.error};if(!parsed.episode)return {error:"Invalid episode tracking."};
-  try{const context=await episodeContext(form);if(context.error)return {error:context.error};const {error}=await context.client.from("tv_episode_tracking").upsert({...context.identity,...parsed.episode},{onConflict:"user_id,tmdb_show_id,season_number,episode_number"});if(error)return failed(error.code);}catch(error){return caught(error);}
+  try{const context=await episodeContext(form);if(context.error)return {error:context.error};const {error}=await context.client.from("tv_episode_tracking").upsert({...context.identity,...parsed.episode},{onConflict:"user_id,tmdb_show_id,season_number,episode_number"});if(error)return failed(error.code);if(parsed.episode.watched){const {error:statusError}=await markShowWatching(context.client,context.identity.user_id,context.identity.tmdb_show_id);if(statusError){refresh();return failed(statusError.code);}}}catch(error){return caught(error);}
   refresh();return {message:"Episode saved."};
 }
 export async function toggleEpisode(_:FormState,form:FormData):Promise<FormState>{
@@ -48,8 +51,9 @@ export async function toggleEpisode(_:FormState,form:FormData):Promise<FormState
     const {data:previous,error:readError}=await context.client.from("tv_episode_tracking").select("watched_on").eq("user_id",identity.user_id).eq("tmdb_show_id",identity.tmdb_show_id).eq("season_number",identity.season_number).eq("episode_number",identity.episode_number).maybeSingle();
     if(readError)return failed(readError.code);
     const {error}=await context.client.from("tv_episode_tracking").upsert({...identity,watched,watched_on:watched?previous?.watched_on||null:null},{onConflict:"user_id,tmdb_show_id,season_number,episode_number"});if(error)return failed(error.code);
+    if(watched){const {error:statusError}=await markShowWatching(context.client,identity.user_id,identity.tmdb_show_id);if(statusError){refresh();return failed(statusError.code);}}
   }catch(error){return caught(error);}
-  refresh();return {message:watched?"Marked watched. Watch date is optional and editable in Review.":"Marked unwatched."};
+  refresh();return {message:watched?"Marked watched.":"Marked unwatched."};
 }
 export async function watchSeason(_:FormState,form:FormData):Promise<FormState>{
   const user=await currentUser();if(!user)return {error:"Sign in to watch a season."};
@@ -69,9 +73,11 @@ export async function watchSeason(_:FormState,form:FormData):Promise<FormState>{
     // One bulk upsert makes the episode change atomic under the existing owner RLS.
     const {error}=await client.from("tv_episode_tracking").upsert(episodes.map(episode=>({user_id:user.id,tmdb_show_id:id,season_number:season,episode_number:episode.episode_number,tmdb_episode_id:episode.id,watched:true})),{onConflict:"user_id,tmdb_show_id,season_number,episode_number"});
     if(error)return failed(error.code);
+    const {error:statusError}=await markShowWatching(client,user.id,id);
+    if(statusError){refresh();return failed(statusError.code);}
     count=episodes.length;
   }catch(error){return caught(error);}
-  refresh();return {message:`Marked all ${count} episodes watched. Existing reviews, ratings, and watch dates were kept.`};
+  refresh();return {message:`Marked ${count} episodes watched.`};
 }
 export async function toggleMovieWatchlist(_:FormState,form:FormData):Promise<FormState>{
   const user=await currentUser();if(!user)return {error:"Sign in to save a watchlist."};const id=validId(form.get("tmdb_id"));

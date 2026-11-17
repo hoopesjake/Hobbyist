@@ -25,7 +25,15 @@ try {
     "supabase/tests/tmdb_viewing_rls.sql",
     "supabase/migrations/202611160003_separate_movies_tv.sql",
     "supabase/tests/separate_tracking_rls.sql",
+    "supabase/migrations/202611160004_custom_lists.sql",
+    "supabase/tests/custom_lists_rls.sql",
+    "supabase/migrations/202611170005_games.sql",
+    "supabase/tests/games_rls.sql",
   ]) {
+    if (file.endsWith("202611170005_games.sql")) {
+      await database.exec(`insert into public.media_lists(id,user_id,name,visibility) values('44444444-4444-4444-8444-444444444444','77777777-7777-4777-8777-777777777777','Existing mixed list','public');
+        insert into public.media_list_items(list_id,media_type,tmdb_id) values('44444444-4444-4444-8444-444444444444','movie',550),('44444444-4444-4444-8444-444444444444','tv',550);`);
+    }
     if (file.endsWith("202611160003_separate_movies_tv.sql")) {
       await database.exec(`
         insert into auth.users(id,email) values('77777777-7777-4777-8777-777777777777','migration-fixture@example.invalid');
@@ -38,6 +46,14 @@ try {
     }
     await database.exec(await readFile(new URL(`../${file}`, import.meta.url), "utf8"));
     console.log(`PASS ${file}`);
+    if (file.endsWith("202611170005_games.sql")) {
+      await database.exec(`do $$ begin
+        if (select name from public.media_lists where id='44444444-4444-4444-8444-444444444444')<>'Existing mixed list' or (select visibility from public.media_lists where id='44444444-4444-4444-8444-444444444444')<>'public' then raise exception 'Existing list changed';end if;
+        if (select count(*) from public.media_list_items where list_id='44444444-4444-4444-8444-444444444444' and tmdb_id=550 and igdb_id is null and position is not null)<>2 then raise exception 'Existing movie/TV list entries lost';end if;
+        if (select count(*) from public.viewing_entries)<>4 then raise exception 'Legacy viewing archive changed';end if;
+      end $$;`);
+      console.log('PASS game extension preserves existing mixed list IDs, visibility, entries, and legacy archive');
+    }
     if (file.endsWith("202611160003_separate_movies_tv.sql")) {
       await database.exec(`do $$ begin
         if (select count(*) from public.viewing_entries)<>4 then raise exception 'Legacy data lost'; end if;

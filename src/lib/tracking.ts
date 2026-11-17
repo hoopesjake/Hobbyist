@@ -34,7 +34,40 @@ async function readPage<T>(table: string, page: number, filter: string, limit: n
   return {entries:data as T[],total:count || 0,error:null};
 }
 export const getMovies = cache((page=1,filter="all",limit=24)=>readPage<MovieTracking>("movie_tracking",page,filter,limit));
+export const getMovieHistory = cache(async () => {
+  const entries: MovieTracking[] = [];
+  for (let page = 1; ; page++) {
+    const result = await getMovies(page, "all", 500);
+    if (result.error) return { entries: [], error: result.error };
+    entries.push(...result.entries);
+    if (entries.length >= result.total || !result.entries.length) return { entries, error: null };
+  }
+});
 export const getShows = cache((page=1,filter="all",limit=24)=>readPage<ShowTracking>("tv_tracking",page,filter,limit));
+export const getTVHistory = cache(async () => {
+  const user = await currentUser();
+  const shows: ShowTracking[] = [];
+  const episodes: EpisodeTracking[] = [];
+  if (!user) return { shows, episodes, error: null };
+  const client = await createClient();
+  for (let page = 1; ; page++) {
+    const result = await getShows(page, "all", 500);
+    if (result.error) return { shows: [], episodes: [], error: result.error };
+    shows.push(...result.entries);
+    if (shows.length >= result.total || !result.entries.length) break;
+  }
+  for (let offset = 0; ; offset += 500) {
+    const { data, error } = await client.from("tv_episode_tracking").select("*").eq("user_id", user.id)
+      .order("tmdb_show_id").order("season_number").order("episode_number").range(offset, offset + 499);
+    if (error) {
+      console.error("TV statistics lookup failed:", error.code);
+      return { shows: [], episodes: [], error: unavailable };
+    }
+    episodes.push(...data as EpisodeTracking[]);
+    if (data.length < 500) break;
+  }
+  return { shows, episodes, error: null };
+});
 export const getSeasonTracking = cache(async (id:number,season:number) => {
   const user=await currentUser(); if(!user)return {entries:[] as EpisodeTracking[],error:null};
   const client=await createClient(); const entries:EpisodeTracking[]=[];

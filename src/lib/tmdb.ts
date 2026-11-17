@@ -1,6 +1,7 @@
 import "server-only";
 import { cacheLife } from "next/cache";
 import type { MediaType } from "@/lib/media-validation";
+import { popularPeople, type DiscoveryPerson } from "@/lib/people-discovery";
 export type CatalogKind = MediaType | "person" | "all";
 export type Genre = { id: number; name: string };
 export type CatalogItem = {
@@ -9,16 +10,17 @@ export type CatalogItem = {
   release_date?: string; first_air_date?: string; genre_ids?: number[];
   vote_average?: number; vote_count?: number; adult?: boolean; character?: string;
   popularity?: number; known_for_department?: string;
+  known_for_titles?: string[];
 };
-export type CastMember = { id: number; name: string; character: string; profile_path: string | null };
+export type CastMember = DiscoveryPerson & { character: string };
 export type TitleDetails = CatalogItem & {
   genres: Genre[]; tagline?: string; runtime?: number; number_of_seasons?: number;
-  number_of_episodes?: number; seasons?: SeasonDetails[]; status?: string; credits: { cast: CastMember[] };
+  number_of_episodes?: number; seasons?: SeasonDetails[]; status?: string; credits: { cast: CastMember[]; crew?: (DiscoveryPerson & { job: string })[] };
 };
 export type PersonDetails = {
   id: number; name: string; biography: string; profile_path: string | null;
   birthday: string | null; deathday: string | null; place_of_birth: string | null;
-  known_for_department: string; combined_credits: { cast: CatalogItem[] };
+  known_for_department: string; combined_credits: { cast: CatalogItem[]; crew?: (CatalogItem & { job: string })[] };
 };
 export class TmdbError extends Error {
   readonly status: number;
@@ -44,9 +46,28 @@ export function imageUrl(path: string | null | undefined, size: "w342" | "w500" 
   return path && /^\/[a-zA-Z0-9_.-]+$/.test(path) ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 }
 export async function getCatalog(query: string, kind: CatalogKind, page: number) {
+  if (kind === "person" && !query) return getPopularPeople(page);
   const path = query ? `search/${kind === "all" ? "multi" : kind}` : `trending/${kind}/week`;
   const data = await request<{ results: CatalogItem[]; total_pages: number }>(path, { page: String(page), include_adult: "false", ...(query ? { query } : {}) });
   return { results: data.results.map(item => ({ ...item, media_type: item.media_type || kind as CatalogItem["media_type"] })).filter(item => !item.adult && ["movie", "tv", "person"].includes(item.media_type)), totalPages: Math.min(data.total_pages, 500) };
+}
+async function getPopularPeople(page: number) {
+  "use cache";
+  cacheLife({ stale: 60, revalidate: 900, expire: 86400 });
+  const lists = await Promise.all((["movie", "tv"] as const).map(async kind => {
+    const data = await request<{ results: CatalogItem[]; total_pages: number }>(`discover/${kind}`, {
+      page: String(page), include_adult: "false", sort_by: "popularity.desc", "vote_count.gte": "100",
+    });
+    return { ...data, results: data.results.map(item => ({ ...item, media_type: kind })) };
+  }));
+  const candidates = lists.flatMap(list => list.results.filter(item => !item.adult && (item.vote_count || 0) >= 100).slice(0, 10));
+  const titles: TitleDetails[] = [];
+  for (let offset = 0; offset < candidates.length; offset += 8) {
+    const results = await Promise.allSettled(candidates.slice(offset, offset + 8).map(item => getTitle(item.media_type, item.id)));
+    for (const result of results) if (result.status === "fulfilled") titles.push(result.value);
+  }
+  if (candidates.length && !titles.length) throw new TmdbError("People discovery is temporarily unavailable. Please try again.");
+  return { results: popularPeople(titles.filter((title): title is TitleDetails & { media_type: "movie" | "tv" } => title.media_type !== "person")), totalPages: Math.min(500, ...lists.map(list => list.total_pages)) };
 }
 export async function getGenres() {
   const [movies, tv] = await Promise.all([request<{ genres: Genre[] }>("genre/movie/list"), request<{ genres: Genre[] }>("genre/tv/list")]);

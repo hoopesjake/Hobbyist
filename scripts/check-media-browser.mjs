@@ -31,7 +31,7 @@ try{
     await dialog.getByLabel("Date watched",{exact:true}).fill("2026-11-15");
     await dialog.getByLabel("Review text",{exact:true}).fill("An optional movie review.");
     await dialog.getByLabel("Contains spoilers",{exact:true}).check();
-    const stars=dialog.getByRole("button",{name:"4 stars",exact:true});await stars.click();await stars.click();
+    const stars=dialog.locator(".rating-star").nth(3);await stars.click({position:{x:26,y:17}});await stars.press("ArrowLeft");
     assert.equal(await dialog.locator("[name=rating]").inputValue(),"3.5");
     await page.keyboard.press("Escape");
     assert.equal(await dialog.isVisible(),false);
@@ -78,7 +78,7 @@ try{
   const page=await browser.newPage();page.setDefaultTimeout(15000);
   for(const filter of ["movie","tv"]){
     await page.goto(`${base}/actors/287?filter=${filter}`);
-    await page.getByRole("heading",{name:"Acting filmography",exact:true}).waitFor();
+    await page.getByRole("heading",{name:"Filmography",exact:true}).waitFor();
     const links=await page.locator(".catalog-card").evaluateAll(elements=>elements.map(element=>element.getAttribute("href")));
     assert.ok(links.length&&links.every(href=>href.startsWith(filter==="movie"?"/movies/":"/tv/")));
   }

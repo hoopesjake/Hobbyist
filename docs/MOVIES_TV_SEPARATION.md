@@ -36,7 +36,7 @@ A movie has independent watchlist and watched flags, one optional primary watch 
 
 Episode controls work from the season list: mark watched/unwatched with one button, or open Review episode to edit its rating, review/spoiler flag, watch state, and watch date without navigating away. Longer seasons are paginated. A rating is optional when marking watched; an episode can be rated without being watched or rating other episodes.
 
-Watching the first episode creates a Planned parent show only if absent. It never overwrites existing show data. Overall start/completion dates, status, and rating are edited only in the overall show dialog. No episode rating is averaged into a show rating. No completion status or watch date is assigned automatically. Quick watched toggles leave dates blank unless an existing date is available; owners can record dates in the dialog. Unmarking watched clears its watch date, while retaining its review and rating.
+Watching an episode creates its parent show if absent and moves an unfinished show to Currently watching. Completed shows keep their status; overall dates, ratings, and reviews are preserved. Overall start/completion dates, status, and rating are edited only in the overall show dialog. No episode rating is averaged into a show rating. No completion status or watch date is assigned automatically. Quick watched toggles leave dates blank unless an existing date is available; owners can record dates in the dialog. Unmarking watched clears its watch date, while retaining its review and rating.
 
 Show progress counts unique watched episode records against TMDB's listed main-season episode counts, including announced episodes in the denominator. Season 0 is available and tracked but excluded from the main-show progress percentage, explicitly labeled in the UI. Selected-season progress uses actual episode entries. A caught-up ongoing show is never automatically completed. Status Watched means the owner has seen it but has not explicitly marked it Completed; the status is always the owner's choice.
 
@@ -133,4 +133,9 @@ Saving a personal rating or nonblank written review now marks that movie or epis
 
 ## Season Watch all
 
-Each selected season has a signed-in Watch all button above its episode list. It saves every listed episode in that season, including episodes on other pagination pages, with one owner-scoped bulk upsert. Existing ratings, reviews, spoiler flags, and watch dates are preserved; new dates/ratings/reviews are not invented. Overall show status, dates, and rating stay unchanged. Specials work when season 0 is selected. No schema migration is required. The local SQL regression test covers mixed existing/new episode rows and preservation of other seasons and overall show values.
+Each selected season has a signed-in Watch all button above its episode list. It saves every listed episode in that season, including episodes on other pagination pages, with one owner-scoped bulk upsert. Existing ratings, reviews, spoiler flags, and watch dates are preserved; new dates/ratings/reviews are not invented. Unfinished shows move to Currently watching; Completed shows keep their status. Overall dates and ratings stay unchanged. Specials work when season 0 is selected. No schema migration is required. The local SQL regression test covers mixed existing/new episode rows and preservation of other seasons and overall show values.
+
+
+## Automatic Currently watching
+
+Saving a watched episode (including a rating/review), marking an episode watched, or using Watch all on a season sets the owner's unfinished show to Currently watching. This resumes Planned, Paused, Dropped, and Watched shows while preserving Completed. Unwatching an episode does not reset show status. Only status changes; overall reviews, ratings, and dates remain intact. This applies on future saves and requires no schema migration.

@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { AppShell } from "@/components/layout/app-shell";
 import "./globals.css";
+import { PageLoading } from "@/components/ui/page-loading";
 
 export const metadata: Metadata = {
   title: { default: "Hobbyist", template: "%s | Hobbyist" },
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
-      <body><Suspense fallback={<p className="page-content" role="status">Loading Hobbyist...</p>}><AppShell>{children}</AppShell></Suspense></body>
+      <body><Suspense fallback={<PageLoading/>}><AppShell>{children}</AppShell></Suspense></body>
     </html>
   );
 }

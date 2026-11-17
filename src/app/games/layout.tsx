@@ -1,0 +1,4 @@
+import Link from "next/link";
+import { NavigationTabs } from "@/components/layout/navigation-tabs";
+export const metadata={title:"Games"};
+export default function Layout({children}:{children:React.ReactNode}){return <div className="page-content media-page"><header className="movies-header"><div><p className="eyebrow">YOUR NEXT GREAT ADVENTURE</p><Link href="/games"><h1>Games</h1></Link></div><NavigationTabs label="Games navigation" fallbackHref="/games/discover" tabs={[{href:"/games",label:"Dashboard"},{href:"/games/discover",label:"Discover"},{href:"/games/library",label:"My library"},{href:"/games/statistics",label:"Statistics"}]}/></header>{children}<footer className="tmdb-credit"><p>Game data and artwork provided by <a className="text-link" href="https://www.igdb.com" target="_blank" rel="noreferrer">IGDB</a>. Catalog scores are out of 100; your Hobbyist ratings are out of 5.</p></footer></div>;}

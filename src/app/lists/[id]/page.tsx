@@ -1,0 +1,28 @@
+﻿import Link from "next/link";
+import { notFound } from "next/navigation";
+import { getList,getListItems } from "@/lib/lists";
+import { listId } from "@/lib/list-validation";
+import { getListCatalogItem,type ListCatalogItem } from "@/lib/list-catalog";
+import { getCatalog } from "@/lib/tmdb";
+import { searchGames } from "@/lib/igdb";
+import { ListCatalogCard } from "@/components/lists/list-catalog-card";
+import { ActionForm } from "@/components/auth/action-form";
+import { BackLink } from "@/components/layout/back-link";
+import { ListFields } from "@/components/lists/list-fields";
+import { DeleteList,ShareList } from "@/components/lists/list-controls";
+import { addListItem,removeListItem,updateList,moveListItem } from "@/app/lists/actions";
+export default async function Page({params,searchParams}:{params:Promise<{id:string}>;searchParams:Promise<{page?:string;q?:string;searchPage?:string;catalog?:string}>}){
+ const id=listId((await params).id);if(!id)notFound();const {list,owner,error}=await getList(id);if(error)return <p role="status" className="welcome-copy">{error}</p>;if(!list)notFound();
+ const filters=await searchParams,page=Math.max(1,Math.min(100000,parseInt(filters.page||"1",10)||1)),searchPage=Math.max(1,Math.min(500,parseInt(filters.searchPage||"1",10)||1));
+ const query=owner&&typeof filters.q==="string"?filters.q.trim().slice(0,200):"",catalog=filters.catalog==="games"?"games":"movies-tv";
+ const contents=await getListItems(id,page),items:ListCatalogItem[]=[];
+ for(let offset=0;offset<contents.items.length;offset+=8)items.push(...await Promise.all(contents.items.slice(offset,offset+8).map(getListCatalogItem)));
+ let results:ListCatalogItem[]|null=null,hasNext=false,searchError=false;
+ if(query){try{if(catalog==="games"){const found=await searchGames(query,searchPage);results=found.games.map(game=>({...game,media_type:"game"}));hasNext=found.hasNext;}else{const found=await getCatalog(query,"all",searchPage);results=found.results.filter(item=>item.media_type!=="person");hasNext=searchPage<found.totalPages;}}catch{searchError=true;}}
+ const fields=(item:ListCatalogItem)=><><input type="hidden" name="list_id" value={id}/><input type="hidden" name="media_type" value={item.media_type}/><input type="hidden" name={item.media_type==="game"?"igdb_id":"tmdb_id"} value={item.id}/></>;
+ const pages=Math.max(1,Math.ceil(contents.total/20)),searchHref=(next:number)=>`?${new URLSearchParams({q:query,catalog,searchPage:String(next)})}`;
+ return <><BackLink href="/lists">Back to lists</BackLink><div className="list-title-row"><div><span className="list-visibility">{list.visibility==="public"?"Public":"Private"}</span><h2>{list.name}</h2>{list.description&&<p className="list-description">{list.description}</p>}<p className="welcome-copy">{contents.total} {contents.total===1?"title":"titles"}</p></div>{list.visibility==="public"&&<ShareList/>}</div>
+ {owner&&<details className="list-settings"><summary>Edit list</summary><div className="list-editor"><ActionForm action={updateList} label="Save changes"><input type="hidden" name="list_id" value={id}/><ListFields list={list}/></ActionForm><DeleteList id={id}/></div></details>}
+ {owner&&<section className="dashboard-section"><h3>Add movies, TV & games</h3><form className="catalog-search" role="search"><label className="sr-only" htmlFor="list-search">Search titles</label><input id="list-search" name="q" type="search" defaultValue={query} maxLength={200} placeholder="Search titles…" required/><label className="sr-only" htmlFor="list-catalog">Catalog</label><select id="list-catalog" name="catalog" defaultValue={catalog}><option value="movies-tv">Movies & TV</option><option value="games">Games</option></select><button className="account-button">Search</button></form>{query&&<div className="section-heading"><h3>Results for “{query}”</h3><Link className="text-link" href={`/lists/${id}`}>Clear search</Link></div>}{searchError&&<p role="status">Search is unavailable. Please try again.</p>}{results&&<><div className="catalog-grid">{results.map(item=><article key={`${item.media_type}-${item.id}`} className="list-item-card"><ListCatalogCard item={item}/><ActionForm action={addListItem} label="Add to list">{fields(item)}</ActionForm></article>)}</div>{!results.length&&<p className="welcome-copy">No titles found</p>}<nav className="catalog-pagination" aria-label="Search result pages">{searchPage>1&&<Link href={searchHref(searchPage-1)}>Previous</Link>}<span>Page {searchPage}</span>{hasNext&&searchPage<500&&<Link href={searchHref(searchPage+1)}>Next</Link>}</nav></>}</section>}
+ <section className="dashboard-section"><h3>On this list</h3>{contents.error?<p role="status">{contents.error}</p>:items.length?<div className="catalog-grid">{items.map((item,index)=><article key={`${item.media_type}-${item.id}`} className="list-item-card"><ListCatalogCard item={item}/>{owner&&<><div className="list-reorder-actions">{(page>1||index>0)&&<ActionForm action={moveListItem} label="Move up">{fields(item)}<input type="hidden" name="direction" value="-1"/></ActionForm>}{((page-1)*20+index<contents.total-1)&&<ActionForm action={moveListItem} label="Move down">{fields(item)}<input type="hidden" name="direction" value="1"/></ActionForm>}</div><ActionForm action={removeListItem} label="Remove from list">{fields(item)}</ActionForm></>}</article>)}</div>:<p className="welcome-copy">No titles yet</p>}{!contents.error&&pages>1&&<nav className="catalog-pagination" aria-label="List contents pages">{page>1&&<Link href={`?page=${page-1}`}>Previous</Link>}<span>Page {page} of {pages}</span>{page<pages&&<Link href={`?page=${page+1}`}>Next</Link>}</nav>}</section></>;
+}

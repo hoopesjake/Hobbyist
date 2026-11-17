@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test:media": "node --test tests/media-validation.test.mjs tests/tracking-validation.test.mjs"
+    "test:media": "node --test tests/media-validation.test.mjs tests/tracking-validation.test.mjs tests/movie-statistics.test.mjs tests/tv-statistics.test.mjs tests/people-discovery.test.mjs tests/episode-actions.test.mjs tests/list-validation.test.mjs tests/list-actions.test.mjs tests/catalog-ranking.test.mjs tests/game-validation.test.mjs tests/game-statistics.test.mjs tests/igdb-transport.test.mjs tests/game-actions.test.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
