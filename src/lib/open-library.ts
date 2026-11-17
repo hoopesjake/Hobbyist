@@ -1,7 +1,7 @@
 import "server-only";
 import { cacheLife } from "next/cache";
 import { englishEditionCover, type CoverSearchRecord } from "./book-cover";
-import { rankBookTitles } from "./book-search";
+import { rankBookTitles, bookSearchQuery, isBookSearchResult } from "./book-search";
 import { BookCatalogError, bookCover, createOpenLibraryTransport, openLibraryWorkId } from "./open-library-transport";
 export { BookCatalogError, bookCover, openLibraryWorkId };
 export type BookSummary = { id: number; work_key: string; title: string; authors: string[]; cover_url: string | null; first_publish_year?: number };
@@ -10,6 +10,16 @@ export type BookDetails = BookSummary & { description: string; subjects: string[
 type Work = { key: string; title: string; subtitle?: string; description?: string | { value: string }; covers?: number[]; subjects?: string[]; authors?: { author?: { key: string } }[] };
 type Edition = { key: string; title: string; number_of_pages?: number; publishers?: string[]; publish_date?: string; isbn_13?: string[]; covers?: number[]; works?: { key: string }[] };
 const transport = createOpenLibraryTransport(() => process.env.OPEN_LIBRARY_CONTACT_EMAIL);
+
+async function getEnglishCoverRecords(ids:number[]) {
+  "use cache";
+  cacheLife({stale:3600,revalidate:86400,expire:604800});
+  const keys=ids.filter(id=>Number.isInteger(id)&&id>0&&id<=2147483647).slice(0,50).map(id=>`key:/works/OL${id}W`);
+  if(!keys.length)return [] as CoverSearchRecord[];
+  const result=await transport.request<{docs:CoverSearchRecord[]}>(`/search.json?${new URLSearchParams({q:`(${keys.join(" OR ")}) AND language:eng`,limit:"50",lang:"en",fields:"key,editions,editions.key,editions.language,editions.cover_i"})}`);
+  if(!Array.isArray(result.docs))throw new BookCatalogError();
+  return result.docs;
+}
 
 export async function getBookSubjects(ids: number[]) {
   "use cache";
@@ -24,12 +34,20 @@ export async function getBookSubjects(ids: number[]) {
 
 export async function searchBooks(query: string, page = 1) {
   "use cache";
-  cacheLife({ stale: 60, revalidate: 300, expire: 3600 });
+  cacheLife({ stale: 300, revalidate: 900, expire: 86400 });
   const text = query.trim().slice(0, 200), safePage = Math.max(1, Math.min(100, Math.floor(page) || 1));
   if (text.length < 2) return { books: [] as BookSummary[], hasMore: false };
-  const result = await transport.request<{ docs: { key: string; title: string; author_name?: string[]; editions?: CoverSearchRecord["editions"]; readinglog_count?: number; first_publish_year?: number }[]; numFound: number }>(`/search.json?${new URLSearchParams({ title: text, q: "language:eng", page: String(safePage), limit: "20", lang: "en", fields: "key,title,author_name,first_publish_year,readinglog_count,editions,editions.key,editions.language,editions.cover_i" })}`);
+  const searchQuery = bookSearchQuery(text);
+  if (!searchQuery) return { books: [] as BookSummary[], hasMore: false };
+  const result = await transport.request<{ docs: { key: string; title: string; author_name?: string[]; readinglog_count?: number; first_publish_year?: number }[]; numFound: number }>(`/search.json?${new URLSearchParams({ q: searchQuery, page: String(safePage), limit: "20", lang: "en", fields: "key,title,author_name,first_publish_year,readinglog_count" })}`);
   if (!Array.isArray(result.docs)) throw new BookCatalogError();
-  const books = rankBookTitles(result.docs.filter(item => typeof item.title === "string"), text).flatMap(item => { const id = openLibraryWorkId(item.key); return id ? [{ id, work_key: `/works/OL${id}W`, title: item.title, authors: (item.author_name || []).filter(name => typeof name === "string"), cover_url: englishEditionCover(item), first_publish_year: item.first_publish_year }] : []; });
+  const matches=rankBookTitles(result.docs.filter(item=>typeof item.title==="string"&&isBookSearchResult(item,text)),text);
+  // Open Library applies title terms to edition selection, even inside a title
+  // OR author query. Fetch edition covers by work IDs to avoid dropping the
+  // author's other titles; this is one batch, never a request per result.
+  const covers=await getEnglishCoverRecords(matches.flatMap(book=>{const id=openLibraryWorkId(book.key);return id?[id]:[];}));
+  const coverMap=new Map(covers.map(book=>[openLibraryWorkId(book.key),englishEditionCover(book)]));
+  const books=matches.flatMap(item=>{const id=openLibraryWorkId(item.key),cover=id?coverMap.get(id):null;return id&&cover?[{id,work_key:`/works/OL${id}W`,title:item.title,authors:(item.author_name||[]).filter(name=>typeof name==="string"),cover_url:cover,first_publish_year:item.first_publish_year}]:[];});
   return { books, hasMore: safePage * 20 < result.numFound };
 }
 export async function getBook(id: number): Promise<BookDetails> {
@@ -45,8 +63,8 @@ export async function getBook(id: number): Promise<BookDetails> {
   let cover: string | null = null;
   let default_edition_id: string | undefined;
   try {
-    const matching = await transport.request<{ docs: CoverSearchRecord[] }>(`/search.json?${new URLSearchParams({ q: `key:${work.key} AND language:eng`, limit: "1", lang: "en", fields: "key,editions,editions.key,editions.language,editions.cover_i" })}`);
-    const match = matching.docs?.find(book => openLibraryWorkId(book.key) === id);
+    const matching=await getEnglishCoverRecords([id]);
+    const match=matching.find(book=>openLibraryWorkId(book.key)===id);
     cover = match ? englishEditionCover(match) : null;
     const preferred = match?.editions?.docs?.find(edition => edition.language?.includes("eng") && edition.key?.match(/^\/books\/OL[1-9]\d*M$/));
     default_edition_id = preferred?.key?.slice(7);

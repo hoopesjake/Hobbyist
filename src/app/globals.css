@@ -52,6 +52,7 @@
 .book-tracking-form .rating-stars { justify-content: center; flex-wrap: wrap; }
 .book-description-preview { display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
 .book-tagline { color: var(--accent-soft); font-style: italic; }
+.book-card-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .tv-rating-rows .book-rating-label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .book-sign-in { display: block; width: fit-content; margin-inline: auto; text-align: center; }
 

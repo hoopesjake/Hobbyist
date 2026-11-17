@@ -2,7 +2,43 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {parseBookTracking,parseReadingPages} from "../src/lib/book-validation.ts";
 import {createOpenLibraryTransport,openLibraryWorkId,bookCover} from "../src/lib/open-library-transport.ts";
-import {rankBookTitles} from "../src/lib/book-search.ts";
+import {rankBookTitles,bookSearchQuery,isBookSearchResult} from "../src/lib/book-search.ts";
+test('search matches literal titles/authors and filters noisy derivatives without removing series books',()=>{
+ assert.match(bookSearchQuery('Pierce Brown'),/title:.*OR author:/);
+ assert.ok(!bookSearchQuery('red OR *:*').includes('*:* OR'));
+ assert.equal(isBookSearchResult({title:'Red Rising (Red Rising Saga, Book 1)',author_name:['Pierce Brown']},'red rising'),true);
+ assert.equal(isBookSearchResult({title:'Study Guide: Red Rising',author_name:['Study Guides']},'red rising'),false);
+ assert.equal(isBookSearchResult({title:'Study Guide: Red Rising',author_name:['Study Guides']},'study guide red rising'),true);
+ assert.equal(isBookSearchResult({title:'x'.repeat(181),author_name:['Author']},'book'),false);
+ const books=[{title:'Biography of Pierce Brown',author_name:['Someone Else'],readinglog_count:1000},{title:'Red Rising',author_name:['Pierce Brown'],readinglog_count:10}];
+ assert.equal(rankBookTitles(books,'Pierce Brown')[0].title,'Red Rising');
+});
+test('transport shares duplicate requests, caches successes and retries transient network failures',async()=>{
+ let calls=0,time=1000;
+ const transport=createOpenLibraryTransport(()=>"reader@example.test",async()=>{calls++;if(calls===1)throw new DOMException('Timed out','TimeoutError');return Response.json({docs:[{title:'Red Rising'}]});},{now:()=>time,wait:async ms=>{time+=ms;}});
+ const [a,b]=await Promise.all([transport.request('/search.json?q=red'),transport.request('/search.json?q=red')]);
+ assert.deepEqual(a,b);assert.equal(calls,2);await transport.request('/search.json?q=red');assert.equal(calls,2);
+});
+test('slow responses do not block unrelated catalog requests and starts remain paced',async()=>{
+ let releaseFirst,announceSecond,active=0,maxActive=0;
+ const starts=[];const secondStarted=new Promise(resolve=>{announceSecond=resolve;});
+ const transport=createOpenLibraryTransport(()=>"reader@example.test",async url=>{
+  starts.push(Date.now());active++;maxActive=Math.max(maxActive,active);
+  if(url.endsWith('/first'))await new Promise(resolve=>{releaseFirst=resolve;});
+  if(url.endsWith('/second'))announceSecond();
+  active--;return Response.json({ok:true});
+ });
+ const first=transport.request('/first'),second=transport.request('/second'),third=transport.request('/third');
+ await secondStarted;releaseFirst();await Promise.all([first,second,third]);
+ assert.equal(starts.length,3);assert.ok(starts[1]-starts[0]>=350);assert.ok(starts[2]-starts[1]>=350);assert.equal(maxActive,2);
+});
+test('transport serves recent stale metadata on failure and respects long Retry-After without retry storms',async()=>{
+ let time=1000,calls=0,fail=false;
+ const transport=createOpenLibraryTransport(()=>"reader@example.test",async()=>{calls++;return fail?new Response('Busy',{status:429,headers:{'Retry-After':'120'}}):Response.json({title:'Saved catalog result'});},{now:()=>time,wait:async ms=>{time+=ms;}});
+ await transport.request('/works/OL1W.json');time+=300001;fail=true;
+ assert.equal((await transport.request('/works/OL1W.json')).title,'Saved catalog result');assert.equal(calls,2);
+ await assert.rejects(()=>transport.request('/works/OL2W.json'),/busy/);assert.equal(calls,2);
+});
 import {bookReturnTo} from "../src/lib/book-navigation.ts";
 import {bookStatistics,bookGenreRanking} from "../src/lib/book-statistics.ts";
 const tracked=(id,values={})=>({ol_work_id:id,title:`Book ${id}`,authors:['Author'],edition_id:'OL1M',effective_status:'reading',current_page:0,total_pages:200,manual_current_page:0,effective_finished_on:null,rating:null,...values});

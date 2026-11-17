@@ -33,7 +33,7 @@ Add `OPEN_LIBRARY_CONTACT_EMAIL` to the appropriate Vercel environment using you
 - `npm run test:calendar`, `npm run test:media`, `npm run test:calendar:ui`, `npm run lint`, `npx tsc --noEmit`, and `npm run build` cover regressions and production compilation. `npm run test:books:live` checks the public provider.
 - Authenticated writes to the user's hosted database have not been exercised by this agent: no user session is available. The signed-in save-and-refresh steps above remain the hosted acceptance check. Public localhost route checks and isolated persistence tests are distinct from that check.
 
-Public catalog results are cached (search five minutes, details one day); private reading data is not put in shared catalog caches. Requests are serialized per server process at 400 ms intervals with a 12-second timeout and bounded retries for rate limits or temporary service failures. Multiple independently scaled server instances do not share this queue. See [Open Library API guidelines](https://openlibrary.org/developers/api).
+Public catalog results are cached (search revalidates after 15 minutes, details after one day); private reading data is not put in shared catalog caches. Request starts are paced 400 ms apart, with at most two active fetches per server process and an eight-second timeout per attempt. Identical in-flight requests are shared. Network failures and temporary HTTP failures get at most one retry. Retry-After is honored; long cooldowns fail promptly rather than leaving users waiting. A bounded public metadata cache serves recent successful results for up to 30 minutes during temporary failures, and repeated failures receive a short cooldown. Multiple independently scaled server instances do not share this limiter; this reduces avoidable requests but cannot guarantee upstream availability. See [Open Library API guidelines](https://openlibrary.org/developers/api).
 
 ## Reading dashboard and statistics
 
@@ -44,3 +44,9 @@ Public catalog results are cached (search five minutes, details one day); privat
 - Dated completions use the existing effective finish date, with undated completions reported separately. Periods follow the Calendar's default America/Denver timezone.
 - Genres are mapped from real Open Library subjects for finished books, fetched in cached batches of up to 50. Genre data streams separately and provider failures leave saved statistics usable.
 - No additional database migration is needed for dashboards; the earlier reading-date migration 012 is still required for effective completion dates.
+
+## Search quality and resilience
+
+Search matches title or author words, with exact titles first and popularity used within relevance groups. It does not search arbitrary descriptions. Search results require an identified author and a verified English-edition cover; obvious study guides, summaries and workbooks are hidden unless explicitly requested. Extremely long title strings are excluded, and cards clamp titles to two lines. Legitimate series titles and collections remain eligible; no series membership is invented.
+
+Work search and cover resolution use two batched API requests, not a request per book. This avoids Open Library's edition-selection behavior applying title terms from an OR-author query to every edition and losing an author's other books. Details use the same cover selection. Tests cover Red Rising title relevance, Pierce Brown's other series titles, duplicate-request sharing, paced concurrent requests, retries, cooldowns and stale fallback.
