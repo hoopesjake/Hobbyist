@@ -49,8 +49,8 @@ test("calendar dates and ranges cross leap days, year boundaries and month ends"
   assert.equal(addCalendarDays("2024-02-28", 1), "2024-02-29");
   assert.equal(shiftCalendarMonth("2026-01-31", 1), "2026-02-28");
   assert.equal(shiftCalendarMonth("2026-01-31", -1), "2025-12-31");
-  assert.deepEqual(calendarRange("month", "2026-11-17"), { start: "2026-10-26", end: "2026-12-07" });
-  assert.deepEqual(calendarRange("week", "2026-11-17"), { start: "2026-11-16", end: "2026-11-23" });
+  assert.deepEqual(calendarRange("month", "2026-11-17"), { start: "2026-11-01", end: "2026-12-13" });
+  assert.deepEqual(calendarRange("week", "2026-11-17"), { start: "2026-11-15", end: "2026-11-22" });
   assert.deepEqual(calendarRange("day", "2026-11-17"), { start: "2026-11-17", end: "2026-11-18" });
   assert.deepEqual(calendarRange("agenda", "2026-11-17"), { start: "2026-11-01", end: "2026-12-01" });
   assert.equal(dateInZone(new Date("2026-11-17T02:00Z"), "America/Denver"), "2026-11-16");

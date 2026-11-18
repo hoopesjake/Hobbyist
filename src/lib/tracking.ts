@@ -44,6 +44,14 @@ export const getMovieHistory = cache(async () => {
   }
 });
 export const getShows = cache((page=1,filter="all",limit=24)=>readPage<ShowTracking>("tv_tracking",page,filter,limit));
+export const getLatestWatchedEpisode = cache(async (showId: number) => {
+  const user = await currentUser(); if (!user) return null;
+  const client = await createClient();
+  const { data, error } = await client.from("tv_episode_tracking").select("season_number,episode_number").eq("user_id", user.id).eq("tmdb_show_id", showId).eq("watched", true)
+    .order("season_number", { ascending: false }).order("episode_number", { ascending: false }).limit(1).maybeSingle();
+  if (error) { console.error("Latest episode lookup failed:", error.code); return null; }
+  return data as { season_number: number; episode_number: number } | null;
+});
 export const getTVHistory = cache(async () => {
   const user = await currentUser();
   const shows: ShowTracking[] = [];

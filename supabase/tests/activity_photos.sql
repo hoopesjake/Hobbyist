@@ -61,6 +61,11 @@ do $$ begin
  if exists(select 1 from public.activity_photos) then raise exception 'Activity deletion left photo metadata'; end if;
  if (select count(*) from public.activity_photo_cleanup)<>6 then raise exception 'Physical cleanup not durably queued'; end if;
 end $$;
+-- Planned activities (not just logged ones) may also carry photos.
+insert into public.calendar_entries(id,user_id,kind,status,title,category,event_date,time_zone,media_type,provider,provider_id,media_title) values
+ ('a7777777-7777-4777-8777-777777777777','a3333333-3333-4333-8333-333333333333','plan','planned','Photo plan','movies','2020-02-01','UTC','movie','tmdb',123123,'Movie');
+insert into public.activity_photos(id,user_id,entry_id,content_type,byte_size) values('a8888888-8888-4888-8888-888888888888','a3333333-3333-4333-8333-333333333333','a7777777-7777-4777-8777-777777777777','image/jpeg',100);
+do $$ begin if (select count(*) from public.activity_photos where entry_id='a7777777-7777-4777-8777-777777777777')<>1 then raise exception 'Planned activity could not receive a photo'; end if; end $$;
 delete from storage.objects where bucket_id='activity-photos';
 do $$ begin if exists(select 1 from storage.objects where bucket_id='activity-photos') then raise exception 'Owner cannot clean retired objects'; end if; end $$;
 reset role;

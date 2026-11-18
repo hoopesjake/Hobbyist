@@ -50,8 +50,8 @@ export async function POST(request: Request) {
   if (!contentType || contentType !== file.type) return json({ error: "Choose a JPEG, PNG, or WebP photo." }, 400);
   const client = await createClient();
   await cleanActivityPhotos(client, user.id);
-  const { data: parent } = await client.from("calendar_entries").select("id,kind,media_type").eq("id", entryId).eq("user_id", user.id).maybeSingle();
-  if (!parent || parent.kind !== "actual" || !parent.media_type) return json({ error: "Save a movie, TV, or game activity before adding photos." }, 400);
+  const { data: parent } = await client.from("calendar_entries").select("id,media_type").eq("id", entryId).eq("user_id", user.id).maybeSingle();
+  if (!parent || !parent.media_type) return json({ error: "Save a movie, TV, or game activity before adding photos." }, 400);
   let { data: photo } = await client.from("activity_photos").select("*").eq("id", id).eq("user_id", user.id).maybeSingle();
   if (!photo) {
     const inserted = await client.from("activity_photos").insert({ id, user_id: user.id, entry_id: entryId, content_type: contentType, byte_size: file.size, caption }).select("*").single();

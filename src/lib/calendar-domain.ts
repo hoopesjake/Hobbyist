@@ -41,7 +41,7 @@ export function shiftCalendarMonth(date: string, months: number): string {
 export function calendarRange(view: CalendarView, date: string) {
   let start = date;
   if (view === "month" || view === "agenda") start = `${date.slice(0, 7)}-01`;
-  if (view === "month" || view === "week") start = addCalendarDays(start, -((new Date(`${start}T12:00:00Z`).getUTCDay() + 6) % 7));
+  if (view === "month" || view === "week") start = addCalendarDays(start, -(new Date(`${start}T12:00:00Z`).getUTCDay()));
   const end = view === "month" ? addCalendarDays(start, 42) : view === "week" ? addCalendarDays(start, 7) : view === "agenda" ? shiftCalendarMonth(start, 1) : addCalendarDays(start, 1);
   return { start, end };
 }

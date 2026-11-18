@@ -1,7 +1,7 @@
 "use client";
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
-import { X, LockKeyhole, Trash2 } from "lucide-react";
+import { X, Check, LockKeyhole, Trash2 } from "lucide-react";
 import { saveCalendarEntry, deleteCalendarEntry, type CalendarActionState } from "@/app/calendar/actions";
 import { calendarCategories, categoryLabels, planStatuses, dateInZone, possibleInstants, type CalendarCategory, type CalendarEntry, type LibraryOption } from "@/lib/calendar-domain";
 
@@ -9,6 +9,8 @@ import { ActivityPhotos, type ActivityPhotoHandle } from "@/components/calendar/
 import { TvEpisodePicker } from "@/components/calendar/tv-episode-picker";
 import { ActivityDetails } from "@/components/calendar/activity-details";
 import { HobbyPicker } from "@/components/calendar/hobby-picker";
+import { MediaImage } from "@/components/movies/media-image";
+import { RatingStars } from "@/components/movies/rating-stars";
 
 export type CalendarDraft = Partial<CalendarEntry> & { id: string; kind: "plan" | "actual"; event_date: string; time_zone: string };
 type Props = { draft: CalendarDraft; onClose: () => void; onSaved: (message: string) => void; onLog?: () => void; related?: CalendarEntry; originalPlan?: CalendarEntry; onOpenPlan?: () => void };
@@ -27,6 +29,7 @@ export function CalendarEditor({ draft, onClose, onSaved, onLog, related, origin
   const [picking, setPicking] = useState(false);
   const [hasEnd, setHasEnd] = useState(!!draft.end_time);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photosBusy, setPhotosBusy] = useState(false);
   const photos = useRef<ActivityPhotoHandle>(null);
@@ -69,12 +72,32 @@ export function CalendarEditor({ draft, onClose, onSaved, onLog, related, origin
     setCategory(item.media_type === "movie" ? "movies" : item.media_type === "tv" ? "tv" : item.media_type === "book" ? "books" : "games");
   }
   const existing = !!draft.updated_at;
+  const completingPlan = !existing && kind === "actual" && !!draft.plan_id;
+  const minimalView = existing && !editing;
+  const art = <div className="calendar-minimal-art">{draft.media_image ? <MediaImage src={draft.media_image} alt={`${draft.media_title || title} cover`} width={160} height={240} unoptimized/> : <span className="poster-fallback">No cover</span>}</div>;
   return <dialog ref={element => { dialog.current = element; if (element && !element.open) element.showModal(); }} className="review-dialog calendar-dialog" aria-labelledby="calendar-editor-title" onCancel={event => { if (saving) event.preventDefault(); else onClose(); }}>
-    <div className="review-dialog-content"><header className="review-dialog-header"><div><p className="eyebrow">{existing ? "YOUR ACTIVITY" : draft.plan_id ? "FROM YOUR PLAN" : "MAKE A LITTLE TIME"}</p><h2 id="calendar-editor-title">{existing ? "Edit activity" : kind === "plan" ? "Plan an activity" : "Log an activity"}</h2></div><button className="icon-button" type="button" aria-label="Close activity" disabled={saving} onClick={onClose}><X size={20}/></button></header>
+    <div className="review-dialog-content"><header className="review-dialog-header"><div><p className="eyebrow">{existing ? "YOUR ACTIVITY" : draft.plan_id ? "FROM YOUR PLAN" : "MAKE A LITTLE TIME"}</p><h2 id="calendar-editor-title">{minimalView ? "Your activity" : completingPlan ? "Complete this plan" : existing ? "Edit activity" : kind === "plan" ? "Plan an activity" : "Log an activity"}</h2></div><button className="icon-button" type="button" aria-label="Close activity" disabled={saving} onClick={onClose}><X size={20}/></button></header>
       {originalPlan && <div className="calendar-log-plan"><p className="welcome-copy">Original plan: <strong>{originalPlan.title}</strong> · {originalPlan.event_date}</p>{onOpenPlan && <button className="calendar-secondary" type="button" onClick={onOpenPlan}>View original plan</button>}</div>}
-      <form action={action} className="account-form calendar-form">
+      {minimalView ? <div className="calendar-minimal">
+        {art}
+        <RatingStars rating={draft.session_rating ?? null} centered/>
+        <h3 className="calendar-minimal-title">{draft.media_title || title}</h3>
+        <p className="catalog-kind">{categoryLabels[category]}</p>
+        <button type="button" className="calendar-secondary" onClick={() => setEditing(true)}>Edit details</button>
+      </div> : <form action={action} className="account-form calendar-form">
         <input type="hidden" name="id" value={draft.id}/><input type="hidden" name="updated_at" value={draft.updated_at || ""}/><input type="hidden" name="plan_id" value={draft.plan_id || ""}/><input type="hidden" name="privacy" value="private"/>
         <input type="hidden" name="media_image" value={hobby?.image_url || ""}/><input type="hidden" name="media" value={media}/><input type="hidden" name="media_title" value={hobby?.title || ""}/><input type="hidden" name="library_add" value={addToLibrary ? "on" : ""}/>
+        {completingPlan ? <>
+          <input type="hidden" name="kind" value="actual"/><input type="hidden" name="title" value={title}/><input type="hidden" name="category" value={category}/><input type="hidden" name="event_date" value={eventDate}/><input type="hidden" name="time_zone" value={draft.time_zone}/>
+          {draft.start_time && <input type="hidden" name="start_time" value={draft.start_time.slice(0, 5)}/>}
+          <div className="calendar-complete-header">{art}<div><h3 className="calendar-minimal-title">{draft.media_title || title}</h3><p className="catalog-kind">{categoryLabels[category]}</p></div></div>
+          {draft.start_time && <label>Finished at<input type="time" name="end_time"/></label>}
+          <label>Who was there?<input name="participants" maxLength={500} defaultValue={draft.participants || ""} placeholder="Optional"/></label>
+          <label>How did it go?<textarea name="notes" rows={3} maxLength={10000} placeholder="Leave a comment (optional)"/></label>
+          {hobby && <ActivityPhotos ref={photos} onBusyChange={setPhotosBusy}/>}
+          {state.error && <p role="alert" className="form-error">{state.error}</p>}
+          <button className="account-button" disabled={pending || photosBusy}><Check size={16}/>{pending ? "Saving…" : "Mark complete"}</button>
+        </> : <>
         <HobbyPicker ratingRef={setRatingTarget} initial={hobby} onSelect={selectHobby} onPicking={setPicking} onCustom={() => { setHobby(null); setMedia(""); setAddToLibrary(false); setCategory("other"); setReady(true); setPicking(false); }}/>
         {hobby && !picking && <Link className="text-link calendar-media-link" href={`/${hobby.media_type === "movie" ? "movies" : hobby.media_type === "tv" ? "tv" : hobby.media_type === "book" ? "books" : "games"}/${hobby.media_type === "book" ? `OL${hobby.provider_id}W` : hobby.provider_id}`}>View linked {hobby.media_type === "tv" ? "show" : hobby.media_type}</Link>}
         {ready && <div className={`hobby-event-details${picking ? " hobby-event-details-muted" : ""}`} inert={picking}>
@@ -91,14 +114,15 @@ export function CalendarEditor({ draft, onClose, onSaved, onLog, related, origin
           <details><summary>When the clocks go back</summary><div className="calendar-form-row"><label>Repeated start time<select name="start_occurrence" defaultValue={draft.starts_at && draft.start_time ? occurrence(draft.starts_at, draft.time_zone) : ""}><option value="">Choose if needed</option><option value="earlier">First occurrence</option><option value="later">Second occurrence</option></select></label><label>Repeated end time<select name="end_occurrence" defaultValue={draft.ends_at && draft.end_time ? occurrence(draft.ends_at, draft.time_zone) : ""}><option value="">Choose if needed</option><option value="earlier">First occurrence</option><option value="later">Second occurrence</option></select></label></div></details>
         </div></details>
         <label>{kind === "actual" ? "Notes & memories" : "Plan notes"}<textarea name="notes" rows={4} maxLength={10000} defaultValue={draft.notes || ""} placeholder={kind === "actual" ? "What would you like to remember?" : "Anything you want to plan ahead?"}/></label>
-        {kind === "actual" && hobby && <ActivityPhotos ref={photos} entryId={draft.updated_at ? draft.id : undefined} onBusyChange={setPhotosBusy}/>}
+        {hobby && <ActivityPhotos ref={photos} entryId={draft.updated_at ? draft.id : undefined} onBusyChange={setPhotosBusy}/>}
         <details className="calendar-form-details" open={!!draft.participants || (existing && kind === "plan")}><summary>People & details</summary><div className="calendar-detail-fields"><label>Who was there?<input name="participants" maxLength={500} defaultValue={draft.participants || ""} placeholder="Optional"/></label>{kind === "plan" && <label>Plan status<select name="status" defaultValue={draft.status || "planned"}>{planStatuses.map(status => <option key={status} value={status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>)}</select></label>}<p className="calendar-private"><LockKeyhole size={14}/>Private · Only you can see this activity and its notes.</p></div></details>
         {state.error && <p role="alert" className="form-error">{state.error}</p>}
         <button className="account-button" disabled={pending || removing || picking || photosBusy}>{pending ? "Saving…" : "Save activity"}</button>
         </div>}
-      </form>
-      {existing && kind === "plan" && onLog && <div className="calendar-log-plan"><button type="button" className="calendar-secondary" disabled={saving} onClick={onLog}>{related ? "Open actual activity" : "Log what actually happened"}</button>{related && <p className="welcome-copy">Logged: {related.title} · {related.event_date}</p>}</div>}
-      {existing && <div className="calendar-delete">{confirmDelete ? <><p>Delete this {kind === "plan" ? "plan? Its linked memory will be kept." : "activity and its private notes?"}</p><form action={removeAction}><input type="hidden" name="id" value={draft.id}/><input type="hidden" name="updated_at" value={draft.updated_at}/><button type="submit" className="calendar-danger" disabled={pending || removing}>{removing ? "Deleting…" : "Delete permanently"}</button><button type="button" className="calendar-secondary" disabled={removing} onClick={() => setConfirmDelete(false)}>Keep activity</button></form>{removeState.error && <p className="form-error" role="alert">{removeState.error}</p>}</> : <button type="button" className="calendar-danger" disabled={saving} onClick={() => setConfirmDelete(true)}><Trash2 size={14}/>Delete activity</button>}</div>}
+        </>}
+      </form>}
+      {existing && kind === "plan" && onLog && <div className="calendar-log-plan"><button type="button" className="calendar-secondary" disabled={saving} onClick={onLog}>{related ? "View logged activity" : <><Check size={14}/>Complete event</>}</button>{related && <p className="welcome-copy">Logged: {related.title} · {related.event_date}</p>}</div>}
+      {existing && editing && <div className="calendar-delete">{confirmDelete ? <><p>Delete this {kind === "plan" ? "plan? Its linked memory will be kept." : "activity and its private notes?"}</p><form action={removeAction}><input type="hidden" name="id" value={draft.id}/><input type="hidden" name="updated_at" value={draft.updated_at}/><button type="submit" className="calendar-danger" disabled={pending || removing}>{removing ? "Deleting…" : "Delete permanently"}</button><button type="button" className="calendar-secondary" disabled={removing} onClick={() => setConfirmDelete(false)}>Keep activity</button></form>{removeState.error && <p className="form-error" role="alert">{removeState.error}</p>}</> : <button type="button" className="calendar-danger" disabled={saving} onClick={() => setConfirmDelete(true)}><Trash2 size={14}/>Delete activity</button>}</div>}
     </div>
   </dialog>;
 }
