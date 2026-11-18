@@ -45,11 +45,18 @@ export function titleDate(item: Pick<CatalogItem, "release_date" | "first_air_da
 export function imageUrl(path: string | null | undefined, size: "w342" | "w500" = "w342") {
   return path && /^\/[a-zA-Z0-9_.-]+$/.test(path) ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 }
-export async function getCatalog(query: string, kind: CatalogKind, page: number) {
+export async function getCatalog(query: string, kind: CatalogKind, page: number, genre?: number) {
   if (kind === "person" && !query) return getPopularPeople(page);
-  const path = query ? `search/${kind === "all" ? "multi" : kind}` : `trending/${kind}/week`;
-  const data = await request<{ results: CatalogItem[]; total_pages: number }>(path, { page: String(page), include_adult: "false", ...(query ? { query } : {}) });
+  // TMDB's search endpoints don't accept with_genres, so a genre filter only applies to
+  // browsing (no text query), where /discover/{kind} supports it server-side.
+  const canFilterByGenre = genre && (kind === "movie" || kind === "tv") && !query;
+  const path = query ? `search/${kind === "all" ? "multi" : kind}` : canFilterByGenre ? `discover/${kind}` : `trending/${kind}/week`;
+  const data = await request<{ results: CatalogItem[]; total_pages: number }>(path, { page: String(page), include_adult: "false", ...(query ? { query } : {}), ...(canFilterByGenre ? { with_genres: String(genre) } : {}) });
   return { results: data.results.map(item => ({ ...item, media_type: item.media_type || kind as CatalogItem["media_type"] })).filter(item => !item.adult && ["movie", "tv", "person"].includes(item.media_type)), totalPages: Math.min(data.total_pages, 500) };
+}
+export async function getGenreList(kind: "movie" | "tv") {
+  const data = await request<{ genres: Genre[] }>(`genre/${kind}/list`);
+  return data.genres;
 }
 async function getPopularPeople(page: number) {
   "use cache";

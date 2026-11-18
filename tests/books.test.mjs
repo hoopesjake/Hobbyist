@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {parseBookTracking,parseReadingPages} from "../src/lib/book-validation.ts";
 import {createOpenLibraryTransport,openLibraryWorkId,bookCover} from "../src/lib/open-library-transport.ts";
-import {rankBookTitles,bookSearchQuery,isBookSearchResult} from "../src/lib/book-search.ts";
+import {rankBookTitles,bookSearchQuery,isBookSearchResult,bookGenres,isBookGenre} from "../src/lib/book-search.ts";
 test('search matches literal titles/authors and filters noisy derivatives without removing series books',()=>{
  assert.match(bookSearchQuery('Pierce Brown'),/title:.*OR author:/);
  assert.ok(!bookSearchQuery('red OR *:*').includes('*:* OR'));
@@ -12,6 +12,14 @@ test('search matches literal titles/authors and filters noisy derivatives withou
  assert.equal(isBookSearchResult({title:'x'.repeat(181),author_name:['Author']},'book'),false);
  const books=[{title:'Biography of Pierce Brown',author_name:['Someone Else'],readinglog_count:1000},{title:'Red Rising',author_name:['Pierce Brown'],readinglog_count:10}];
  assert.equal(rankBookTitles(books,'Pierce Brown')[0].title,'Red Rising');
+});
+test('genre filtering only ever appends our own fixed subject slugs, never arbitrary text',()=>{
+ assert.match(bookSearchQuery('dune','science_fiction'),/subject_key:"science_fiction"/);
+ assert.ok(!bookSearchQuery('dune').includes('subject_key'));
+ assert.ok(!bookSearchQuery('dune','"); DROP TABLE').includes('DROP TABLE'));
+ assert.ok(isBookGenre('fantasy'));
+ assert.ok(!isBookGenre('made_up_genre'));
+ assert.equal(bookGenres.length,9);
 });
 test('transport shares duplicate requests, caches successes and retries transient network failures',async()=>{
  let calls=0,time=1000;

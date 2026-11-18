@@ -1,7 +1,7 @@
 import { currentProfile, currentUser } from "@/lib/auth";
 import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
-import { Aperture, Tv, Clapperboard, Gamepad2, MoreHorizontal, CalendarDays } from "lucide-react";
+import { Aperture, Tv, Clapperboard, Gamepad2, MoreHorizontal, CalendarDays, BookOpen } from "lucide-react";
 import { navigationItems } from "@/lib/navigation";
 import { MobileNavigation } from "@/components/layout/mobile-navigation";
 import { Sidebar } from "@/components/layout/sidebar";
@@ -35,11 +35,12 @@ function MobileNavigationFallback() {
   return (
     <nav className="mobile-nav" aria-label="Mobile navigation">
       <Link className="mobile-nav-item" href="/"><Aperture size={19} /><span>Home</span></Link>
-      <Link className="mobile-nav-item" href="/calendar"><CalendarDays size={19}/><span>Calendar</span></Link>
       <Link className="mobile-nav-item" href="/movies"><Clapperboard size={19} /><span>Movies</span></Link>
+      <Link className="mobile-nav-item" href="/tv"><Tv size={19} /><span>TV</span></Link>
+      <Link className="mobile-nav-item mobile-nav-calendar" href="/calendar"><span className="mobile-nav-calendar-bubble"><CalendarDays size={23}/></span><span>Calendar</span></Link>
       <Link className="mobile-nav-item" href="/games"><Gamepad2 size={19} /><span>Games</span></Link>
-      <Link className="mobile-nav-item" href="/tv"><Tv size={19} /><span>TV Shows</span></Link>
-      <Link className="mobile-nav-item" href="/music"><MoreHorizontal size={19} /><span>More</span></Link>
+      <Link className="mobile-nav-item" href="/books"><BookOpen size={19} /><span>Books</span></Link>
+      <Link className="mobile-nav-item" href="/lists"><MoreHorizontal size={19} /><span>More</span></Link>
     </nav>
   );
 }

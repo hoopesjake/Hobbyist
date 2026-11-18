@@ -1,9 +1,11 @@
 "use client";
 import { useActionState, useRef, useState } from "react";
 import Link from "next/link";
-import { X, Check, LockKeyhole, Trash2 } from "lucide-react";
+import { X, Check, LockKeyhole, Trash2, Camera, NotebookPen } from "lucide-react";
 import { saveCalendarEntry, deleteCalendarEntry, type CalendarActionState } from "@/app/calendar/actions";
-import { calendarCategories, categoryLabels, planStatuses, dateInZone, possibleInstants, type CalendarCategory, type CalendarEntry, type LibraryOption } from "@/lib/calendar-domain";
+import { calendarCategories, categoryLabels, planStatuses, dateInZone, possibleInstants, calendarTime, type CalendarCategory, type CalendarEntry, type LibraryOption } from "@/lib/calendar-domain";
+import { QuickPhotoAdd } from "./quick-photo-add";
+import { QuickMemoryAdd } from "./quick-memory-add";
 
 import { ActivityPhotos, type ActivityPhotoHandle } from "@/components/calendar/activity-photos";
 import { TvEpisodePicker } from "@/components/calendar/tv-episode-picker";
@@ -30,6 +32,7 @@ export function CalendarEditor({ draft, onClose, onSaved, onLog, related, origin
   const [hasEnd, setHasEnd] = useState(!!draft.end_time);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [quickAction, setQuickAction] = useState<"photos" | "memory" | null>(null);
   const [saving, setSaving] = useState(false);
   const [photosBusy, setPhotosBusy] = useState(false);
   const photos = useRef<ActivityPhotoHandle>(null);
@@ -83,15 +86,27 @@ export function CalendarEditor({ draft, onClose, onSaved, onLog, related, origin
         <RatingStars rating={draft.session_rating ?? null} centered/>
         <h3 className="calendar-minimal-title">{draft.media_title || title}</h3>
         <p className="catalog-kind">{categoryLabels[category]}</p>
-        <button type="button" className="calendar-secondary" onClick={() => setEditing(true)}>Edit details</button>
+        <dl className="calendar-minimal-facts">
+          <div><dt>{kind === "actual" ? "Completed" : "Planned"}</dt><dd>{draft.event_date}</dd></div>
+          {kind === "plan" && draft.start_time && <div><dt>Time</dt><dd>{calendarTime(draft.start_time)}</dd></div>}
+          {draft.season_number != null && <div><dt>Season</dt><dd>{draft.season_number}</dd></div>}
+          {draft.episode_number != null && <div><dt>Episode</dt><dd>{draft.episode_number}</dd></div>}
+        </dl>
+        {quickAction === "photos" ? <QuickPhotoAdd entryId={draft.id} onDone={() => setQuickAction(null)}/>
+        : quickAction === "memory" ? <QuickMemoryAdd draft={draft} onSaved={onSaved} onCancel={() => setQuickAction(null)}/>
+        : <div className="calendar-minimal-actions">
+          <button type="button" className="calendar-secondary" onClick={() => setQuickAction("photos")}><Camera size={14}/>Add photos</button>
+          <button type="button" className="calendar-secondary" onClick={() => setQuickAction("memory")}><NotebookPen size={14}/>{kind === "actual" ? "Log memory" : "Edit plan notes"}</button>
+          <button type="button" className="calendar-secondary" onClick={() => setEditing(true)}>Edit details</button>
+        </div>}
       </div> : <form action={action} className="account-form calendar-form">
         <input type="hidden" name="id" value={draft.id}/><input type="hidden" name="updated_at" value={draft.updated_at || ""}/><input type="hidden" name="plan_id" value={draft.plan_id || ""}/><input type="hidden" name="privacy" value="private"/>
         <input type="hidden" name="media_image" value={hobby?.image_url || ""}/><input type="hidden" name="media" value={media}/><input type="hidden" name="media_title" value={hobby?.title || ""}/><input type="hidden" name="library_add" value={addToLibrary ? "on" : ""}/>
         {completingPlan ? <>
-          <input type="hidden" name="kind" value="actual"/><input type="hidden" name="title" value={title}/><input type="hidden" name="category" value={category}/><input type="hidden" name="event_date" value={eventDate}/><input type="hidden" name="time_zone" value={draft.time_zone}/>
-          {draft.start_time && <input type="hidden" name="start_time" value={draft.start_time.slice(0, 5)}/>}
+          <input type="hidden" name="kind" value="actual"/><input type="hidden" name="title" value={title}/><input type="hidden" name="category" value={category}/><input type="hidden" name="time_zone" value={draft.time_zone}/>
           <div className="calendar-complete-header">{art}<div><h3 className="calendar-minimal-title">{draft.media_title || title}</h3><p className="catalog-kind">{categoryLabels[category]}</p></div></div>
-          {draft.start_time && <label>Finished at<input type="time" name="end_time"/></label>}
+          <div className="calendar-form-row"><label>Actual date<input type="date" name="event_date" min="1900-01-01" max="2199-12-31" required value={eventDate} onChange={event => setEventDate(event.target.value)}/></label><label>Started at<input type="time" name="start_time" defaultValue={draft.start_time?.slice(0, 5) || ""}/></label></div>
+          <label>Finished at<input type="time" name="end_time"/></label>
           <label>Who was there?<input name="participants" maxLength={500} defaultValue={draft.participants || ""} placeholder="Optional"/></label>
           <label>How did it go?<textarea name="notes" rows={3} maxLength={10000} placeholder="Leave a comment (optional)"/></label>
           {hobby && <ActivityPhotos ref={photos} onBusyChange={setPhotosBusy}/>}

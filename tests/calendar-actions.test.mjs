@@ -167,3 +167,44 @@ test("photo workflows receive the saved version needed for conflict-safe upload 
  const result=await state.actions.saveCalendarEntry({},form({media:"game:550",photo_workflow:"on"}));
  assert.equal(result.id,id);assert.equal(result.updated_at,state.records[0].updated_at);assert.ok(result.message);
 });
+
+test("dragging an event to a new day only changes its date, preserving notes, media and participants", async () => {
+  const state = setup();
+  await state.actions.saveCalendarEntry({}, form({ media: "game:550", notes: "Private memory", participants: "Sam", event_date: "2020-11-17" }));
+  const entry = state.records[0];
+  const result = await state.actions.rescheduleCalendarEntry(entry, { event_date: "2020-11-18" });
+  assert.ok(result.message, result.error);
+  assert.equal(state.records[0].event_date, "2020-11-18");
+  assert.equal(state.records[0].start_time, entry.start_time);
+  assert.equal(state.records[0].notes, "Private memory");
+  assert.equal(state.records[0].participants, "Sam");
+  assert.equal(state.records[0].media_title, entry.media_title);
+});
+test("dragging an event onto a new time slot sets the new start time without touching the date", async () => {
+  const state = setup();
+  await state.actions.saveCalendarEntry({}, form({ media: "game:550", start_time: "18:00", duration_minutes: "45" }));
+  const entry = state.records[0];
+  const result = await state.actions.rescheduleCalendarEntry(entry, { event_date: entry.event_date, start_time: "09:30" });
+  assert.ok(result.message, result.error);
+  assert.equal(state.records[0].start_time, "09:30");
+  assert.equal(state.records[0].event_date, entry.event_date);
+});
+test("dragging a multi-day planned span shifts its end date by the same number of days", async () => {
+  const state = setup();
+  await state.actions.saveCalendarEntry({}, form({ kind: "plan", event_date: "2020-11-17", start_time: "09:00", end_time: "10:00", end_date: "2020-11-19" }));
+  const entry = state.records[0];
+  assert.equal(entry.end_date, "2020-11-19");
+  const result = await state.actions.rescheduleCalendarEntry(entry, { event_date: "2020-11-20" });
+  assert.ok(result.message, result.error);
+  assert.equal(state.records[0].event_date, "2020-11-20");
+  assert.equal(state.records[0].end_date, "2020-11-22");
+});
+test("a non-owner cannot reschedule someone else's activity", async () => {
+  const state = setup();
+  await state.actions.saveCalendarEntry({}, form({ media: "game:550" }));
+  const entry = state.records[0];
+  const visitor = setup("other");
+  visitor.records.push(entry);
+  const result = await visitor.actions.rescheduleCalendarEntry(entry, { event_date: "2020-11-18" });
+  assert.ok(result.error);
+});

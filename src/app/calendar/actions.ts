@@ -121,6 +121,33 @@ export async function saveCalendarEntry(_: CalendarActionState, form: FormData):
   return { message: "Activity saved.", id, ...((photoWorkflow || entry.media_type === "book") && result.data?.updated_at ? { updated_at: String(result.data.updated_at) } : {}) };
 }
 
+// Dragging an event only ever changes when it happens, never what it is: every other field
+// is mirrored from the entry unchanged and run back through the same validated save path
+// (including its optimistic-concurrency check), so a reschedule can't silently drop data.
+export async function rescheduleCalendarEntry(entry: CalendarEntry, changes: { event_date?: string; start_time?: string | null }): Promise<CalendarActionState> {
+  const form = new FormData();
+  const set = (key: string, value: string | number | null | undefined) => form.set(key, value === null || value === undefined ? "" : String(value));
+  set("id", entry.id); set("updated_at", entry.updated_at); set("plan_id", entry.plan_id); set("privacy", "private");
+  set("kind", entry.kind); set("title", entry.title); set("category", entry.category); set("time_zone", entry.time_zone);
+  const nextDate = changes.event_date ?? entry.event_date;
+  const nextStart = changes.start_time !== undefined ? changes.start_time : entry.start_time?.slice(0, 5) ?? null;
+  set("event_date", nextDate); set("start_time", nextStart);
+  // A multi-day span (end_date differs from event_date) shifts by the same delta as the start.
+  if (entry.end_date && entry.end_date !== entry.event_date) {
+    const deltaDays = Math.round((Date.parse(`${nextDate}T00:00:00Z`) - Date.parse(`${entry.event_date}T00:00:00Z`)) / 86400000);
+    set("end_date", new Date(Date.parse(`${entry.end_date}T00:00:00Z`) + deltaDays * 86400000).toISOString().slice(0, 10));
+  } else set("end_date", changes.event_date ? nextDate : entry.end_date);
+  set("end_time", entry.end_time?.slice(0, 5) ?? null);
+  if (entry.duration_minutes != null) set("duration_minutes", entry.duration_minutes);
+  if (entry.approximate) form.set("approximate", "on");
+  set("participants", entry.participants); set("notes", entry.notes);
+  if (entry.media_type && entry.provider_id) { form.set("media", `${entry.media_type}:${entry.provider_id}`); set("media_image", entry.media_image ?? null); set("media_title", entry.media_title); }
+  if (entry.season_number !== null) set("season_number", entry.season_number);
+  if (entry.episode_number !== null) set("episode_number", entry.episode_number);
+  if (entry.kind === "plan") set("status", entry.status || "planned");
+  if (entry.episodes?.length) form.set("episodes", JSON.stringify(entry.episodes));
+  return saveCalendarEntry({}, form);
+}
 export async function deleteCalendarEntry(_: CalendarActionState, form: FormData): Promise<CalendarActionState> {
   const user = await currentUser(), id = form.get("id");
   if (!user) return { error: "Sign in to manage activities." };

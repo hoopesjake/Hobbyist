@@ -3,10 +3,12 @@ import { Suspense } from "react";
 import { currentUser } from "@/lib/auth";
 import { getBook, getBookEditions, getBookEdition, openLibraryWorkId, BookCatalogError, type BookDetails } from "@/lib/open-library";
 import { getBookTracking } from "@/lib/books";
+import { getOwnedLists } from "@/lib/lists";
 import { BackLink } from "@/components/layout/back-link";
 import { MediaImage } from "@/components/movies/media-image";
 import { BookTrackingForm } from "@/components/books/book-tracking-form";
 import { MediaActivity } from "@/components/calendar/media-activity";
+import { AddToList } from "@/components/lists/add-to-list";
 import Link from "next/link";
 import { bookReturnTo } from "@/lib/book-navigation";
 import { BookDescription } from "@/components/books/book-description";
@@ -17,7 +19,7 @@ export default function BookPage(props: BookPageProps) {
 }
 async function BookDetailsContent({ params, searchParams }: BookPageProps) {
   const id = openLibraryWorkId((await params).id); if (!id) notFound();
-  const [user,saved] = await Promise.all([currentUser(),getBookTracking(id)]);
+  const [user,saved,lists] = await Promise.all([currentUser(),getBookTracking(id),getOwnedLists()]);
   let book: BookDetails, offline = false;
   try { book = await getBook(id); } catch (cause) {
     if (!saved.entry) { if (cause instanceof BookCatalogError && cause.status===404) notFound(); throw cause; }
@@ -32,5 +34,5 @@ async function BookDetailsContent({ params, searchParams }: BookPageProps) {
   if (book.default_edition_id && !editionResult.editions.some(edition => edition.id === book.default_edition_id)) {
     try { editionResult.editions.unshift(await getBookEdition(id, book.default_edition_id)); } catch { /* Keep other edition choices available. */ }
   }
-  return <><BackLink href={returnTo}>{returnTo.startsWith("/books/library") ? "Back to my library" : returnTo.includes("?") ? "Back to results" : "Back to books"}</BackLink>{offline && <p role="status" className="welcome-copy">Catalog details are unavailable. Your saved reading record remains available.</p>}<div className="title-detail"><div className="detail-poster-column"><div className="detail-poster">{book.cover_url ? <MediaImage src={book.cover_url} alt={`${book.title} cover`} width={342} height={513} sizes="230px"/> : <span className="poster-fallback">Cover unavailable</span>}</div></div><div><p className="eyebrow">BOOK</p><h2 className="detail-title">{book.title}</h2><p className="title-meta">{book.authors.join(", ") || "Author not listed"}</p><BookDescription description={book.description} tagline={book.tagline}/><a className="text-link" href={`https://openlibrary.org${book.work_key}`} target="_blank" rel="noreferrer">View on Open Library</a></div></div>{saved.error && <p className="calendar-error" role="status">{saved.error}</p>}{user ? <div className="book-reading-controls"><BookTrackingForm key={saved.entry?.updated_at || `new-${id}`} id={id} entry={saved.entry} editions={editionResult.editions} defaultEditionId={book.default_edition_id} unavailable={!!saved.error}/><nav className="catalog-pagination" aria-label="Edition pages">{editionPage>1 && <Link href={editionHref(editionPage-1)}>Previous editions</Link>}{editionResult.hasMore && <Link href={editionHref(editionPage+1)}>More editions</Link>}</nav><MediaActivity type="book" id={id} title={book.title} image={book.cover_url}/></div> : <Link className="account-button book-sign-in" href="/auth/sign-in">Sign in to save and plan reading</Link>}</>;
+  return <><BackLink href={returnTo}>{returnTo.startsWith("/books/library") ? "Back to my library" : returnTo.includes("?") ? "Back to results" : "Back to books"}</BackLink>{offline && <p role="status" className="welcome-copy">Catalog details are unavailable. Your saved reading record remains available.</p>}<div className="title-detail"><div className="detail-poster-column"><div className="detail-poster">{book.cover_url ? <MediaImage src={book.cover_url} alt={`${book.title} cover`} width={342} height={513} sizes="230px"/> : <span className="poster-fallback">Cover unavailable</span>}</div>{user && <AddToList id={id} kind="book" lists={lists.lists} error={lists.error}/>}</div><div><p className="eyebrow">BOOK</p><h2 className="detail-title">{book.title}</h2><p className="title-meta">{book.authors.join(", ") || "Author not listed"}</p><BookDescription description={book.description} tagline={book.tagline}/><a className="text-link" href={`https://openlibrary.org${book.work_key}`} target="_blank" rel="noreferrer">View on Open Library</a></div></div>{saved.error && <p className="calendar-error" role="status">{saved.error}</p>}{user ? <div className="book-reading-controls"><BookTrackingForm key={saved.entry?.updated_at || `new-${id}`} id={id} entry={saved.entry} editions={editionResult.editions} defaultEditionId={book.default_edition_id} unavailable={!!saved.error}/><nav className="catalog-pagination" aria-label="Edition pages">{editionPage>1 && <Link href={editionHref(editionPage-1)}>Previous editions</Link>}{editionResult.hasMore && <Link href={editionHref(editionPage+1)}>More editions</Link>}</nav><MediaActivity type="book" id={id} title={book.title} image={book.cover_url}/></div> : <Link className="account-button book-sign-in" href="/auth/sign-in">Sign in to save and plan reading</Link>}</>;
 }

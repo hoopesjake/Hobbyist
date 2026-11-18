@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Aperture, Bell, ChevronRight, Search } from "lucide-react";
+import { Aperture, Bell, ChevronRight, Search, X } from "lucide-react";
 import { navigationItems, quickLinks } from "@/lib/navigation";
 import { ListMenu } from "@/components/lists/list-menu";
 
@@ -14,6 +14,7 @@ const searchEntries = [
 export function Topbar({ name, authenticated }: { name: string; authenticated: boolean }) {
   const [query, setQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const searchInput = useRef<HTMLInputElement>(null);
   const results = useMemo(() => {
@@ -37,15 +38,17 @@ export function Topbar({ name, authenticated }: { name: string; authenticated: b
   return (
     <header className="topbar">
       <Link className="topbar-brand" href="/" aria-label="Hobbyist home"><span className="brand-mark"><Aperture size={15} strokeWidth={2.2} /></span><span className="brand-name">hobbyist</span></Link>
-      <div className="search-wrap">
+      <div className={`search-wrap${mobileSearchOpen ? " mobile-search-open" : ""}`}>
         <form className="search-form" role="search" onSubmit={(event) => event.preventDefault()}>
           <Search size={16} aria-hidden="true" />
-          <input ref={searchInput} type="search" aria-label="Search Hobbyist" aria-autocomplete="list" aria-controls="search-results" placeholder="Search your hobbies..." value={query} onFocus={() => setSearchOpen(true)} onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)} onChange={(event) => { setQuery(event.target.value); setSearchOpen(true); }} onKeyDown={(event) => { if (event.key === "Escape") setSearchOpen(false); }} />
+          <input ref={searchInput} type="search" aria-label="Search Hobbyist" aria-autocomplete="list" aria-controls="search-results" placeholder="Search your hobbies..." value={query} onFocus={() => setSearchOpen(true)} onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)} onChange={(event) => { setQuery(event.target.value); setSearchOpen(true); }} onKeyDown={(event) => { if (event.key === "Escape") { setSearchOpen(false); setMobileSearchOpen(false); } }} />
           <span className="search-shortcut" aria-hidden="true">⌘ K</span>
+          {mobileSearchOpen && <button type="button" className="icon-button mobile-search-close" aria-label="Close search" onClick={() => setMobileSearchOpen(false)}><X size={18} strokeWidth={1.8} /></button>}
         </form>
-        {searchOpen && query.trim() && <div className="search-results" id="search-results" role="listbox" aria-label="Search suggestions"><div className="popover-label">Quick destinations</div>{results.length ? results.map((result) => <Link className="search-result" key={`${result.href}-${result.label}`} href={result.href} onMouseDown={(event) => event.preventDefault()} onClick={() => { setQuery(""); setSearchOpen(false); }}><span>{result.label}</span><span>{result.type}</span></Link>) : <div className="empty-search">No sections found for “{query}”.</div>}{[["/movies", "Movies"], ["/tv", "TV Shows"], ["/actors", "Actors"], ["/games", "Games"]].map(([href, label]) => <Link className="search-result" key={href} href={`${href}/discover?q=${encodeURIComponent(query.trim())}`} onMouseDown={(event) => event.preventDefault()} onClick={() => { setQuery(""); setSearchOpen(false); }}><span>Search {label}</span><span>Live catalog</span></Link>)}</div>}
+        {searchOpen && query.trim() && <div className="search-results" id="search-results" role="listbox" aria-label="Search suggestions"><div className="popover-label">Quick destinations</div>{results.length ? results.map((result) => <Link className="search-result" key={`${result.href}-${result.label}`} href={result.href} onMouseDown={(event) => event.preventDefault()} onClick={() => { setQuery(""); setSearchOpen(false); setMobileSearchOpen(false); }}><span>{result.label}</span><span>{result.type}</span></Link>) : <div className="empty-search">No sections found for “{query}”.</div>}{[["/movies", "Movies"], ["/tv", "TV Shows"], ["/actors", "Actors"], ["/games", "Games"]].map(([href, label]) => <Link className="search-result" key={href} href={`${href}/discover?q=${encodeURIComponent(query.trim())}`} onMouseDown={(event) => event.preventDefault()} onClick={() => { setQuery(""); setSearchOpen(false); setMobileSearchOpen(false); }}><span>Search {label}</span><span>Live catalog</span></Link>)}</div>}
       </div>
       <div className="topbar-actions">
+        <button className="icon-button mobile-search-toggle" type="button" aria-label={mobileSearchOpen ? "Close search" : "Open search"} aria-expanded={mobileSearchOpen} onClick={() => { setMobileSearchOpen((open) => { const next = !open; if (next) window.setTimeout(() => searchInput.current?.focus(), 10); return next; }); }}><Search size={18} strokeWidth={1.8} /></button>
         <ListMenu/>
         <div className="search-wrap notification-wrap">
           <button className="icon-button" type="button" aria-label="Notifications" aria-expanded={notificationsOpen} aria-controls="notification-panel" onClick={() => { setNotificationsOpen((open) => !open); setSearchOpen(false); }}><Bell size={18} strokeWidth={1.8} /><span className="notification-dot" aria-hidden="true" /></button>

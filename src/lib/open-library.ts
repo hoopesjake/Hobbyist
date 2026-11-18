@@ -1,9 +1,9 @@
 import "server-only";
 import { cacheLife } from "next/cache";
 import { englishEditionCover, type CoverSearchRecord } from "./book-cover";
-import { rankBookTitles, bookSearchQuery, isBookSearchResult } from "./book-search";
+import { rankBookTitles, bookSearchQuery, isBookSearchResult, bookGenres, isBookGenre, type BookGenreSlug } from "./book-search";
 import { BookCatalogError, bookCover, createOpenLibraryTransport, openLibraryWorkId } from "./open-library-transport";
-export { BookCatalogError, bookCover, openLibraryWorkId };
+export { BookCatalogError, bookCover, openLibraryWorkId, bookGenres, isBookGenre, type BookGenreSlug };
 export type BookSummary = { id: number; work_key: string; title: string; authors: string[]; cover_url: string | null; first_publish_year?: number };
 export type BookEdition = { id: string; title: string; pages: number | null; publishers: string[]; publish_date?: string; isbn?: string; cover_url: string | null };
 export type BookDetails = BookSummary & { description: string; subjects: string[]; tagline?: string; default_edition_id?: string };
@@ -32,12 +32,28 @@ export async function getBookSubjects(ids: number[]) {
   return result.docs.flatMap(book=>{const id=openLibraryWorkId(book.key);return id&&safeIds.includes(id)?[{id,subjects:(book.subject||[]).filter(subject=>typeof subject==="string")}]:[];});
 }
 
-export async function searchBooks(query: string, page = 1) {
+// Open Library's /subjects browse endpoint is the real "genre" filter for books: it's a
+// curated subject index, not a standardized taxonomy like TMDB's, so results are looser.
+export async function getBooksBySubject(subject: BookGenreSlug, page = 1) {
+  "use cache";
+  cacheLife({ stale: 3600, revalidate: 86400, expire: 604800 });
+  const safePage = Math.max(1, Math.min(100, Math.floor(page) || 1));
+  const limit = 20, offset = (safePage - 1) * limit;
+  const result = await transport.request<{ works: { key: string; title: string; cover_id?: number; first_publish_year?: number; authors?: { name: string }[] }[]; work_count: number }>(`/subjects/${subject}.json?${new URLSearchParams({ limit: String(limit), offset: String(offset) })}`);
+  if (!Array.isArray(result.works)) throw new BookCatalogError();
+  const books = result.works.flatMap(work => {
+    const id = openLibraryWorkId(work.key);
+    if (!id || !work.cover_id) return [];
+    return [{ id, work_key: work.key, title: work.title, authors: (work.authors || []).map(author => author.name).filter((name): name is string => typeof name === "string"), cover_url: bookCover(work.cover_id), first_publish_year: work.first_publish_year }];
+  });
+  return { books, hasMore: offset + limit < result.work_count };
+}
+export async function searchBooks(query: string, page = 1, subject?: BookGenreSlug) {
   "use cache";
   cacheLife({ stale: 300, revalidate: 900, expire: 86400 });
   const text = query.trim().slice(0, 200), safePage = Math.max(1, Math.min(100, Math.floor(page) || 1));
   if (text.length < 2) return { books: [] as BookSummary[], hasMore: false };
-  const searchQuery = bookSearchQuery(text);
+  const searchQuery = bookSearchQuery(text, subject);
   if (!searchQuery) return { books: [] as BookSummary[], hasMore: false };
   const result = await transport.request<{ docs: { key: string; title: string; author_name?: string[]; readinglog_count?: number; first_publish_year?: number }[]; numFound: number }>(`/search.json?${new URLSearchParams({ q: searchQuery, page: String(safePage), limit: "20", lang: "en", fields: "key,title,author_name,first_publish_year,readinglog_count" })}`);
   if (!Array.isArray(result.docs)) throw new BookCatalogError();

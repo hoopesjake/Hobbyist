@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { parseTracking,episodeIndex,showProgress } from "../src/lib/tracking-validation.ts";
+import { parseTracking,episodeIndex,showProgress,nextEpisode } from "../src/lib/tracking-validation.ts";
 const form = values => {const result=new FormData();for(const [key,value] of Object.entries(values))result.set(key,value);return result;};
 test("movies only accept movie flags/date/review, ignoring obsolete progress fields",()=>{
  const result=parseTracking("movie",form({on_watchlist:"on",watched:"on",watched_on:"2026-11-15",rating:"4.5",review:"Good film",contains_spoilers:"on",status:"watching",started_on:"bad"}),"2026-11-16");
@@ -44,9 +44,22 @@ test("movie and episode reviews imply watched without inventing dates",()=>{
   assert.equal(parseTracking(kind,form({review:"   "}))[kind].watched,false);
  }
 });
-test("overall show review marks watched without completing or changing dates",()=>{
+test("rating or reviewing a show never overrides the status the user explicitly chose",()=>{
+ // Regression test: a rating/review used to silently flip "watching" (and paused/dropped) to
+ // "watched", desyncing the displayed status from real episode progress.
  const result=parseTracking("show",form({status:"watching",rating:"5",started_on:"2026-01-05"}),"2026-11-16").show;
- assert.equal(result.status,"watched");assert.equal(result.started_on,"2026-01-05");assert.equal(result.completed_on,null);
+ assert.equal(result.status,"watching");assert.equal(result.started_on,"2026-01-05");assert.equal(result.completed_on,null);
  assert.equal(parseTracking("show",form({status:"completed",review:"Excellent"})).show.status,"completed");
  assert.equal(parseTracking("show",form({status:"watching"})).show.status,"watching");
+ assert.equal(parseTracking("show",form({status:"paused",rating:"4"})).show.status,"paused");
+ assert.equal(parseTracking("show",form({status:"dropped",review:"Not for me"})).show.status,"dropped");
+});
+test("nextEpisode finds the next air-order episode, crossing seasons, without assuming no gaps",()=>{
+ const seasons=[{season_number:0,episode_count:3},{season_number:1,episode_count:4},{season_number:2,episode_count:6}];
+ assert.deepEqual(nextEpisode(seasons,{season_number:1,episode_number:2}),{season_number:1,episode_number:3});
+ assert.deepEqual(nextEpisode(seasons,{season_number:1,episode_number:4}),{season_number:2,episode_number:1});
+ assert.equal(nextEpisode(seasons,{season_number:2,episode_number:6}),null);
+ // Specials (season 0) are outside the main sequence, same convention as showProgress: a
+ // special watched-latest falls through to the first main-season episode, not special #2.
+ assert.deepEqual(nextEpisode(seasons,{season_number:0,episode_number:1}),{season_number:1,episode_number:1});
 });

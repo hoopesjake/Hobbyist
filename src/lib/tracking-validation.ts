@@ -1,6 +1,9 @@
+// "watched" is a legacy status kept only so old rows still display correctly; new saves
+// choose from showStatusOptions, which excludes it to avoid two near-identical "done" states.
 export const showStatuses = ["planned", "watching", "watched", "paused", "dropped", "completed"] as const;
 export type ShowStatus = typeof showStatuses[number];
-export const showStatusLabels: Record<ShowStatus, string> = { planned: "Planned", watching: "Currently watching", watched: "Watched", paused: "Paused", dropped: "Dropped", completed: "Completed" };
+export const showStatusLabels: Record<ShowStatus, string> = { planned: "Want to Watch", watching: "Currently Watching", watched: "Watched", paused: "Paused", dropped: "Dropped", completed: "Completed" };
+export const showStatusOptions = showStatuses.filter((status) => status !== "watched");
 export function episodeIndex(value: unknown, allowZero = false): number | null {
   const text = String(value ?? "");
   if (!/^(0|[1-9]\d{0,4})$/.test(text)) return null;
@@ -30,7 +33,9 @@ export function parseTracking(kind: "movie" | "show" | "episode", form: FormData
     const status = String(form.get("status") || "planned");
     if (!showStatuses.includes(status as ShowStatus)) return { error: "Choose a valid show status." } as const;
     if (started_on && completed_on && completed_on < started_on) return { error: "Completion cannot be before the start date." } as const;
-    return { show: { ...personal, status: (reviewed && status !== "completed" ? "watched" : status) as ShowStatus, started_on: started_on || null, completed_on: completed_on || null } } as const;
+    // Trust the status the user explicitly chose. Previously a rating/review would silently
+    // flip "Currently Watching" (or Paused/Dropped) to "watched", desyncing it from real episode progress.
+    return { show: { ...personal, status: status as ShowStatus, started_on: started_on || null, completed_on: completed_on || null } } as const;
   }
   const watched = reviewed || form.get("watched") === "on";
   if (watched_on && !watched) return { error: "Mark this as watched to record its watch date." } as const;
@@ -46,4 +51,13 @@ export function showProgress(seasons: SeasonSummary[], watched: WatchedEpisode[]
   const total = main.reduce((sum, season) => sum + season.episode_count, 0);
   const count = Math.min(total, unique.size);
   return { watched: count, total, percentage: total ? Math.round(count / total * 100) : 0 };
+}
+// Given the furthest watched episode, finds the next one in air order so the show page can
+// surface "Up next: S2 E1" without assuming the viewer watched every episode in between.
+export function nextEpisode(seasons: SeasonSummary[], latest: WatchedEpisode): WatchedEpisode | null {
+  const main = seasons.filter(season => season.season_number > 0).sort((a, b) => a.season_number - b.season_number);
+  const current = main.find(season => season.season_number === latest.season_number);
+  if (current && latest.episode_number < current.episode_count) return { season_number: latest.season_number, episode_number: latest.episode_number + 1 };
+  const upcoming = main.find(season => season.season_number > latest.season_number && season.episode_count > 0);
+  return upcoming ? { season_number: upcoming.season_number, episode_number: 1 } : null;
 }

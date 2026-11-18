@@ -16,4 +16,3 @@ export const friendsActivity: FriendActivityItem[] = [
   { initials: "J", name: "Jamie", action: "started reading", title: "The Orchard at Dusk", time: "2 hours ago", style: "friend-one" },
   { initials: "R", name: "Riley", action: "finished watching", title: "A Small Season", time: "Yesterday", style: "friend-two" },
 ];
-export const topFour = ["The Long Way Home", "Tides of Ember", "A Map of Small Things", "Greenhouse No. 4"];
