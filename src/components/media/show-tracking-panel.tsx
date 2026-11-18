@@ -33,7 +33,7 @@ export function ShowTrackingPanel({ id, entry, signedIn, unavailable, latest, ne
   const showsFinished = status === "completed";
   if (!expanded) return (
     <div className="show-tracking-panel show-tracking-collapsed">
-      <div className="rating-edit-trigger"><RatingStars rating={entry?.rating} centered/><button type="button" className="icon-button rating-edit-pencil" aria-label="Edit your rating, status, and watched details" onClick={() => setExpanded(true)}><Pencil size={14}/></button></div>
+      <div className="rating-edit-trigger"><span className="rating-edit-spacer" aria-hidden="true"/><RatingStars rating={entry?.rating} centered/><button type="button" className="icon-button rating-edit-pencil" aria-label="Edit your rating, status, and watched details" onClick={() => setExpanded(true)}><Pencil size={16}/></button></div>
     </div>
   );
   return (

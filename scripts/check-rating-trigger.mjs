@@ -17,7 +17,7 @@ const ratingStars = `<span class="personal-rating-stars centered">${[100,100,100
 const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head>
 <body><main class="main-content"><div class="page-content"><div class="title-detail">
   <div class="detail-poster-column"><div class="detail-poster"><img src="${swatch}" style="width:100%;height:100%;object-fit:cover"/></div>
-    <div class="rating-edit-trigger">${ratingStars}<button class="icon-button rating-edit-pencil">&#9998;</button></div>
+    <div class="rating-edit-trigger"><span class="rating-edit-spacer"></span>${ratingStars}<button class="icon-button rating-edit-pencil">&#9998;</button></div>
   </div>
   <div><h2 class="detail-title">Interstellar</h2></div>
 </div></div></main></body></html>`;
@@ -29,10 +29,13 @@ try {
   await page.setContent(html);
   const starBox = await page.locator(".personal-rating-star").first().boundingBox();
   console.log("star size:", starBox.width, starBox.height);
-  assert.ok(starBox.width >= 22, "stars should be noticeably bigger");
-  const trigger = await page.locator(".rating-edit-trigger").boundingBox();
+  assert.ok(starBox.width >= 26, "stars should be noticeably bigger");
+  const starsGroup = await page.locator(".personal-rating-stars").boundingBox();
   const poster = await page.locator(".detail-poster").boundingBox();
-  assert.ok(Math.abs((trigger.x + trigger.width / 2) - (poster.x + poster.width / 2)) < 20, "trigger not centered under cover");
+  const starsCenter = starsGroup.x + starsGroup.width / 2;
+  const posterCenter = poster.x + poster.width / 2;
+  console.log("stars center:", starsCenter, "poster center:", posterCenter, "diff:", Math.abs(starsCenter - posterCenter));
+  assert.ok(Math.abs(starsCenter - posterCenter) < 2, `stars not exactly centered under cover: off by ${Math.abs(starsCenter - posterCenter)}px`);
   await page.screenshot({ path: ".next/rating-trigger-verification/375.png" });
   console.log("Rating + pencil trigger is bigger and centered under the cover.");
 } finally { if (browser) await browser.close(); }

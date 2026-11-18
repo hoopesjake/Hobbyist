@@ -722,12 +722,16 @@ h1, h2, h3, p { margin-top: 0; }
 /* The only thing under a cover: the rating, and a pencil that opens full editing (status,
    dates, review, etc.) so the poster column isn't cluttered with separate buttons for
    every one of those fields. */
-.rating-edit-trigger { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 18px 0 26px; }
-.rating-edit-trigger .personal-rating-stars { margin: 0; gap: 5px; }
-.rating-edit-trigger .personal-rating-star { width: 24px; height: 24px; }
-.rating-edit-trigger .personal-star-outline { width: 24px; height: 24px; }
-.rating-edit-trigger .personal-star-fill svg { width: 24px; height: 24px; }
-.rating-edit-pencil { flex-shrink: 0; width: 30px; height: 30px; border: 1px solid var(--line); color: var(--muted); }
+/* The spacer mirrors the pencil button's width exactly, so centering this 3-item flex row
+   centers the STARS under the cover -- not the midpoint of stars-plus-pencil, which would
+   visibly drift off-center toward the stars' side. */
+.rating-edit-trigger { display: flex; align-items: center; justify-content: center; gap: 14px; margin: 20px 0 28px; }
+.rating-edit-trigger .personal-rating-stars { margin: 0; gap: 6px; }
+.rating-edit-trigger .personal-rating-star { width: 28px; height: 28px; }
+.rating-edit-trigger .personal-star-outline { width: 28px; height: 28px; }
+.rating-edit-trigger .personal-star-fill svg { width: 28px; height: 28px; }
+.rating-edit-spacer { flex: 0 0 34px; }
+.rating-edit-pencil { flex: 0 0 34px; width: 34px; height: 34px; border: 1px solid var(--line); color: var(--muted); }
 .rating-edit-pencil:hover { border-color: var(--accent); color: var(--accent-soft); }
 .review-dialog { margin: auto; width: min(440px, calc(100vw - 32px)); max-height: calc(100dvh - 48px); padding: 0; overflow-y: auto; border: 1px solid #3a3c38; border-radius: 12px; color: var(--text); background: #191a19; box-shadow: 0 24px 100px rgb(0 0 0 / 50%); }
 .review-dialog::backdrop { background: rgb(0 0 0 / 65%); backdrop-filter: blur(4px); }

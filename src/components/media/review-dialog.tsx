@@ -22,7 +22,7 @@ export function ReviewDialog({kind,id,title,entry,signedIn,unavailable,season,ep
   return <div className={kind==="episode"?"episode-review":"poster-review"}>
     {kind==="episode"
       ? <button className="account-button episode-review-trigger" type="button" onClick={()=>dialog.current?.showModal()}>Review episode</button>
-      : <div className="rating-edit-trigger"><RatingStars rating={entry?.rating} centered/><button type="button" className="icon-button rating-edit-pencil" aria-label="Edit your rating, review, and watched details" onClick={()=>dialog.current?.showModal()}><Pencil size={14}/></button></div>}
+      : <div className="rating-edit-trigger"><span className="rating-edit-spacer" aria-hidden="true"/><RatingStars rating={entry?.rating} centered/><button type="button" className="icon-button rating-edit-pencil" aria-label="Edit your rating, review, and watched details" onClick={()=>dialog.current?.showModal()}><Pencil size={16}/></button></div>}
     {feedback&&<p className="tracking-feedback" role="status">{feedback}</p>}
     <dialog ref={dialog} className="review-dialog" aria-labelledby={`review-${identity}`} onClick={event=>{if(event.target===event.currentTarget)event.currentTarget.close();}}>
       <div className="review-dialog-content"><header className="review-dialog-header"><div><p className="eyebrow">{kind==="episode"?"EPISODE REVIEW":"MOVIE REVIEW"}</p><h2 id={`review-${identity}`}>{title}</h2></div><button type="button" className="icon-button" aria-label="Close review" onClick={()=>dialog.current?.close()}><X size={20}/></button></header>

@@ -11,7 +11,7 @@ import type { BookEdition } from "@/lib/open-library";
 export function BookTrackingPanel({ id, entry, editions, defaultEditionId, unavailable, editionNav }: { id: number; entry: BookTracking | null; editions: BookEdition[]; defaultEditionId?: string; unavailable?: boolean; editionNav?: ReactNode }) {
   const dialog = useRef<HTMLDialogElement>(null);
   return <div className="poster-review">
-    <div className="rating-edit-trigger"><RatingStars rating={entry?.rating} centered/><button type="button" className="icon-button rating-edit-pencil" aria-label="Edit your reading status, rating, and dates" onClick={() => dialog.current?.showModal()}><Pencil size={14}/></button></div>
+    <div className="rating-edit-trigger"><span className="rating-edit-spacer" aria-hidden="true"/><RatingStars rating={entry?.rating} centered/><button type="button" className="icon-button rating-edit-pencil" aria-label="Edit your reading status, rating, and dates" onClick={() => dialog.current?.showModal()}><Pencil size={16}/></button></div>
     <dialog ref={dialog} className="review-dialog" aria-label="Your reading" onClick={event => { if (event.target === event.currentTarget) event.currentTarget.close(); }}>
       <div className="review-dialog-content">
         <div className="review-dialog-header"><div/><button type="button" className="icon-button" aria-label="Close" onClick={() => dialog.current?.close()}><X size={20}/></button></div>
