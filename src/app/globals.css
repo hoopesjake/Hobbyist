@@ -710,7 +710,7 @@ h1, h2, h3, p { margin-top: 0; }
   .catalog-quick { gap: 5px; margin-top: 8px; }
   .catalog-quick .account-button { padding: 5px 7px; font-size: 9px; }
   .catalog-search { flex-wrap: wrap; } .catalog-search input { flex-basis: 100%; } .catalog-search select { flex: 1; }
-  .title-detail { grid-template-columns: 1fr; } .detail-poster { width: min(220px, 65%); } .detail-title { font-size: 30px; } .cast-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .viewing-dates { grid-template-columns: 1fr; } .library-panel { padding: 18px; } .add-media-tile { display: none; } .add-media-header-link { display: inline-flex; }
+  .title-detail { grid-template-columns: 1fr; } .detail-title { font-size: 30px; } .cast-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } .viewing-dates { grid-template-columns: 1fr; } .library-panel { padding: 18px; } .add-media-tile { display: none; } .add-media-header-link { display: inline-flex; }
 }
 
 /* Reviewing is optional; title details stay focused on the catalog. */
@@ -747,7 +747,14 @@ h1, h2, h3, p { margin-top: 0; }
 .review-remove { margin-top: 18px; border-top: 1px solid var(--line); }
 .review-remove .account-form { margin-top: 14px; }
 .review-remove .account-button { padding: 4px; color: var(--muted); background: transparent; font-size: 11px; }
-@media (max-width: 550px) { .detail-poster-column { width: min(220px, 65%); } .review-dialog-content { padding: 22px; } .rating-stars { gap: 6px; } }
+@media (max-width: 550px) {
+  /* The poster stays compact and centered, but the column itself (and the Review/Add to
+     list buttons inside it) use the full width instead of being squeezed to the poster's
+     width and left-aligned with empty space beside them. */
+  .detail-poster-column { width: 100%; }
+  .detail-poster-column .detail-poster { width: min(220px, 65%); margin-inline: auto; }
+  .review-dialog-content { padding: 22px; } .rating-stars { gap: 6px; }
+}
 
 /* Separate media workspaces share alignment, not personal tracking logic. */
 .account-page { width: 100%; margin-inline: auto; }
