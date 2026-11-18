@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { Pencil } from "lucide-react";
 import { ActionForm, type FormState } from "@/components/auth/action-form";
 import { StarRating } from "@/components/movies/star-rating";
 import { RatingStars } from "@/components/movies/rating-stars";
@@ -32,10 +33,7 @@ export function ShowTrackingPanel({ id, entry, signedIn, unavailable, latest, ne
   const showsFinished = status === "completed";
   if (!expanded) return (
     <div className="show-tracking-panel show-tracking-collapsed">
-      <button type="button" className="account-button review-trigger" onClick={() => setExpanded(true)}>Review</button>
-      <p className="poster-saved-status">{showStatusLabels[status]}</p>
-      <RatingStars rating={entry?.rating} centered/>
-      {status === "watching" && latest && <p className="show-tracking-progress">Season {latest.season_number} &middot; Episode {latest.episode_number} watched{next ? <> &mdash; up next: {next.season_number === latest.season_number ? `Episode ${next.episode_number}` : `S${next.season_number} E${next.episode_number}`}</> : <> &mdash; you&rsquo;re all caught up</>}</p>}
+      <div className="rating-edit-trigger"><RatingStars rating={entry?.rating} centered/><button type="button" className="icon-button rating-edit-pencil" aria-label="Edit your rating, status, and watched details" onClick={() => setExpanded(true)}><Pencil size={14}/></button></div>
     </div>
   );
   return (

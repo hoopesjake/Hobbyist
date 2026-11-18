@@ -85,16 +85,6 @@ export async function toggleMovieWatchlist(_:FormState,form:FormData):Promise<Fo
   try{await getTitle("movie",id);const client=await createClient();const {error}=await client.from("movie_tracking").upsert({user_id:user.id,tmdb_id:id,on_watchlist:form.get("on_watchlist")==="true"},{onConflict:"user_id,tmdb_id"});if(error)return failed(error.code);}catch(error){return caught(error);}
   refresh();return {message:form.get("on_watchlist")==="true"?"Added to watchlist.":"Removed from watchlist."};
 }
-export async function toggleMovieWatched(_:FormState,form:FormData):Promise<FormState>{
-  const user=await currentUser();if(!user)return {error:"Sign in to track a movie."};
-  const id=validId(form.get("tmdb_id"));if(!id||!["true","false"].includes(String(form.get("watched"))))return {error:"Invalid movie."};
-  const watched=form.get("watched")==="true";
-  try{await getTitle("movie",id);const client=await createClient();
-    const {data:previous,error:readError}=await client.from("movie_tracking").select("watched_on").eq("user_id",user.id).eq("tmdb_id",id).maybeSingle();if(readError)return failed(readError.code);
-    const {error}=await client.from("movie_tracking").upsert({user_id:user.id,tmdb_id:id,watched,watched_on:watched?previous?.watched_on||null:null},{onConflict:"user_id,tmdb_id"});if(error)return failed(error.code);
-  }catch(error){return caught(error);}
-  refresh();return {message:watched?"Marked watched. Add a watch date or review whenever you like.":"Marked unwatched."};
-}
 export async function removeTracking(_:FormState,form:FormData):Promise<FormState>{
   const user=await currentUser();if(!user)return {error:"Sign in first."};const id=validId(form.get("tmdb_id"));const kind=form.get("kind");
   if(!id || !["movie","show","episode"].includes(String(kind)))return {error:"Invalid tracking record."};

@@ -6,8 +6,13 @@ import { readingStatuses } from "@/lib/book-validation";
 import type { BookTracking } from "@/lib/books";
 import type { BookEdition } from "@/lib/open-library";
 
-export function BookTrackingForm({ id, entry, editions, defaultEditionId, unavailable }: { id: number; entry: BookTracking | null; editions: BookEdition[]; defaultEditionId?: string; unavailable?: boolean }) {
-  const [state, action, pending] = useActionState(saveBook, {});
+export function BookTrackingForm({ id, entry, editions, defaultEditionId, unavailable, onSaved }: { id: number; entry: BookTracking | null; editions: BookEdition[]; defaultEditionId?: string; unavailable?: boolean; onSaved?: (message: string) => void }) {
+  async function save(state: Awaited<ReturnType<typeof saveBook>>, form: FormData) {
+    const result = await saveBook(state, form);
+    if (result.message) onSaved?.(result.message);
+    return result;
+  }
+  const [state, action, pending] = useActionState(onSaved ? save : saveBook, {});
   const initialEdition = entry?.edition_id || (!entry || entry.current_page === 0 ? defaultEditionId || "" : "");
   const [edition, setEdition] = useState(initialEdition);
   const [status, setStatus] = useState(entry?.effective_status || "want_to_read");
